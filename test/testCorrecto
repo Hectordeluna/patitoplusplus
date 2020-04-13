@@ -1,0 +1,58 @@
+programa patito;
+var
+    int i, j, p;
+    int Arreglo[10], OtroArreglo[10];
+    float valor;
+    int Matriz[3][8], OtraMatriz[3][3];
+
+funcion int fact (int j)
+var int i;
+{
+    i = j + (p - j*2+j);
+    si (j != 1 || i > 0) entonces {
+        regresa (j);
+    } sino {
+        regresa(j * fact(j-1));
+    }
+}
+ 
+funcion void inicia (int y)
+var int x;
+    int Arreglo[10], OtroArreglo[10];
+    float valor;
+    int Matriz[3][8], OtraMatriz[3][3];
+{ 
+    x = 0;
+    mientras (x < 11 && (k != 0 || j + 10)) haz {
+        Arreglo[x] = y * x;
+        x = x + 1;
+    }
+}
+
+funcion void inicia (int y)
+{ 
+    x = 0;
+    mientras (x < 11) haz {
+        Arreglo[x] = y * x;
+        x = x + 1;
+    }
+}
+
+principal() {
+    lee(p);
+    j = p * 2;
+    desde i = 0 hasta 9 hacer {
+        Arreglo[i] = Arreglo[i] * fact(Arreglo[i]-p);
+    }
+    OtroArreglo = Arreglo;
+    desde j = 0 hasta 2 hacer
+        desde k = 0 hasta 7 hacer {
+            OtraMatriz[j][k] = k + j;
+        }
+    valor = OtraMatriz$;
+    escribe ("el determinante es:", valor);
+    mientras (i >= 0) haz { 
+        escribe("resultado", Arreglo[i], fact(i+2) * valor);
+        i = i - 1;
+    }
+}

@@ -1,4 +1,4 @@
-from lark import Lark, v_args
+from lark import Lark
 from transformer import TransformerLark
 import os
 import sys
@@ -14,8 +14,9 @@ calc_grammar = r"""
     main_func : MAIN LPAREN RPAREN bloque
 
     var : ID arrm? arrm? "$"?
-    var_id : tipo var lista_var? SEMI var_id?
-    lista_var : "," var lista_var?
+    decl_var : tipo ID arrm? arrm? "$"?
+    var_id : decl_var lista_var? SEMI var_id?
+    lista_var : "," ID arrm? arrm? "$"? lista_var?
     vars : VAR var_id
 
     arrm : LBRAKE (INTEGER | ID) RBRAKE
@@ -27,7 +28,7 @@ calc_grammar = r"""
     | INT
     | FLOAT 
 
-    args_func : tipo var
+    args_func : decl_var
     func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* RPAREN vars?
     func_name: ID
 
@@ -43,7 +44,7 @@ calc_grammar = r"""
     | read
     | for_loop
 
-    asignacion : var ASSING expresion SEMI
+    asignacion : var ASSIGN expresion SEMI -> assign_var
 
     escritura : PRINT LPAREN escritura_exp RPAREN SEMI
     escritura_exp: STRING escritura_exp_comma?
@@ -56,7 +57,7 @@ calc_grammar = r"""
     else : ELSE bloque
 
     while: WHILE LPAREN expresion RPAREN DO bloque
-    for_loop: FROM var ASSING expresion TO expresion DO (bloque | estatuto)
+    for_loop: FROM var ASSIGN expresion TO expresion DO (bloque | estatuto)
 
     exp : termino exp_2?
     exp_2 : PLUS exp 
@@ -90,8 +91,8 @@ calc_grammar = r"""
     | exp exp_s exp
     exp_l : OR
     | AND
-    exp_s : GREATER ASSING
-    | LESS ASSING 
+    exp_s : GREATER ASSIGN
+    | LESS ASSIGN 
     | LESS 
     | GREATER 
     | DIFF
@@ -150,25 +151,6 @@ calc_grammar = r"""
     %ignore WS_INLINE
     %ignore COMMENT
 """
-
-class tablaVars(Transformer):
-    from operator import add, sub, mul, truediv as div, neg
-
-    def __init__(self):
-        self.vars = {}
-
-    def assign_var(self, name, value):
-        if name in self.vars:
-            raise ValueError(name + " already defined")
-        else:
-            self.vars[name] = { 'type': self.currType, 'value': value }
-        return Tree('var', self.vars[name])
-
-    def tipo(self, tipo):
-        self.currType = tipo
-
-    def var(self, name):
-        return Tree('var', self.vars[name])
 
 duck_parser = Lark(calc_grammar, parser='lalr',debug=True, transformer=TransformerLark())
 duck = duck_parser.parse

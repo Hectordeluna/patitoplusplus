@@ -1,36 +1,41 @@
-from lark import Lark, Transformer, v_args, Tree
+from lark import Lark, v_args
+from transformer import TransformerLark
 import os
 import sys
 import codecs
 
-calc_grammar = """
-    ?start: program
+calc_grammar = r"""
+    start: program
 
-    ?program : PROGRAM ID SEMI program_es
-    ?program_es : vars (func bloque)* MAIN LPAREN RPAREN bloque
+    program_id : ID
+    program : PROGRAM program_id SEMI program_es
+    program_es : vars (func bloque)* main_func
     | bloque
+    main_func : MAIN LPAREN RPAREN bloque
 
-    ?var : ID arrm? arrm? "$"?
-    ?var_id : tipo var lista_var? SEMI var_id?
-    ?lista_var : "," var lista_var?
-    ?vars : VAR var_id
+    var : ID arrm? arrm? "$"?
+    var_id : tipo var lista_var? SEMI var_id?
+    lista_var : "," var lista_var?
+    vars : VAR var_id
 
-    ?arrm : LBRAKE (INTEGER | ID) RBRAKE
+    arrm : LBRAKE (INTEGER | ID) RBRAKE
 
-    ?tipo : INT
+    tipo : INT 
     | FLOAT 
 
-    ?return_val: "void"
-    | tipo 
+    return_val: VOID
+    | INT
+    | FLOAT 
 
-    ?args_func : tipo var ("," tipo var)?
-    ?func : FUNCTION return_val ID LPAREN args_func* RPAREN vars?
+    args_func : tipo var
+    func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* RPAREN vars?
+    func_name: ID
 
-    ?bloque : LBRACE estatuto* RBRACE 
+    bloque : LBRACE estatuto* RBRACE 
 
-    ?read: READ LPAREN ID RPAREN SEMI
+    read: READ LPAREN ID RPAREN SEMI
 
-    ?estatuto : asignacion 
+    estatuto : asignacion 
     | condicion 
     | escritura
     | while
@@ -38,55 +43,55 @@ calc_grammar = """
     | read
     | for_loop
 
-    ?asignacion : var ASSIGN expresion SEMI -> assign_var
+    asignacion : var ASSING expresion SEMI
 
-    ?escritura : PRINT LPAREN escritura_exp RPAREN SEMI
-    ?escritura_exp: STRING escritura_exp_comma?
+    escritura : PRINT LPAREN escritura_exp RPAREN SEMI
+    escritura_exp: STRING escritura_exp_comma?
     | expresion escritura_exp_comma?
-    ?escritura_exp_comma: "," escritura_exp
+    escritura_exp_comma: "," escritura_exp
 
-    ?return: RETURN LPAREN exp RPAREN SEMI
+    return: RETURN LPAREN exp RPAREN SEMI
 
-    ?condicion : IF LPAREN expresion RPAREN THEN bloque else?
-    ?else : ELSE bloque
+    condicion : IF LPAREN expresion RPAREN THEN bloque else?
+    else : ELSE bloque
 
-    ?while: WHILE LPAREN expresion RPAREN DO bloque
-    ?for_loop: FROM var ASSIGN expresion TO expresion DO (bloque | estatuto)
+    while: WHILE LPAREN expresion RPAREN DO bloque
+    for_loop: FROM var ASSING expresion TO expresion DO (bloque | estatuto)
 
-    ?exp : termino exp_2?
-    ?exp_2 : PLUS exp 
+    exp : termino exp_2?
+    exp_2 : PLUS exp 
     | MINUS exp
 
-    ?termino : factor ter?
-    ?ter : TIMES termino
+    termino : factor ter?
+    ter : TIMES termino
     | DIVIDE termino
 
-    ?call: ID LPAREN call_args RPAREN
-    ?call_args: expresion "," call_args
+    call: ID LPAREN call_args RPAREN
+    call_args: expresion "," call_args
     | expresion
 
-    ?factor : LPAREN expresion RPAREN
+    factor : LPAREN expresion RPAREN
             | call
             | PLUS var_cte 
             | MINUS var_cte 
             | var_cte
 
-    ?var_cte : var 
+    var_cte : var 
     | cte EXCL
     | cte QUES
     | cte
 
-    ?cte : INTEGER
+    cte : INTEGER
     | NUMBER
 
 
-    ?expresion : exp
+    expresion : exp
     | expresion exp_l expresion
     | exp exp_s exp
-    ?exp_l : OR
+    exp_l : OR
     | AND
-    ?exp_s : GREATER ASSIGN
-    | LESS ASSIGN
+    exp_s : GREATER ASSING
+    | LESS ASSING 
     | LESS 
     | GREATER 
     | DIFF
@@ -108,6 +113,7 @@ calc_grammar = """
     READ: "lee"
     FROM: "desde"
     TO: "hasta"
+    VOID: "void"
 
     ID : WORD
     NUMBER : /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
@@ -164,7 +170,7 @@ class tablaVars(Transformer):
     def var(self, name):
         return Tree('var', self.vars[name])
 
-duck_parser = Lark(calc_grammar, parser='lalr',debug=True)
+duck_parser = Lark(calc_grammar, parser='lalr',debug=True, transformer=TransformerLark())
 duck = duck_parser.parse
 
 def main():
@@ -181,7 +187,7 @@ def test():
     fp = codecs.open('./test/' + 'testCorrecto','r','utf-8')
     cadena2 = fp.read()
     fp.close()
-    print(duck(cadena2))
+    print(duck(cadena2).pretty())
 
 
 if __name__ == '__main__':

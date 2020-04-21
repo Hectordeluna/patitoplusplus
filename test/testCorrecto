@@ -5,7 +5,7 @@ var
     float valor;
     int Matriz[3][8], OtraMatriz[3][3];
 
-funcion int fact (int j)
+funcion int fact (int j, int k)
 var int i;
 {
     i = j + (p - j*2+j);
@@ -24,15 +24,6 @@ var int x;
 { 
     x = 0;
     mientras (x < 11 && (k != 0 || j + 10)) haz {
-        Arreglo[x] = y * x;
-        x = x + 1;
-    }
-}
-
-funcion void inicia (int y)
-{ 
-    x = 0;
-    mientras (x < 11) haz {
         Arreglo[x] = y * x;
         x = x + 1;
     }

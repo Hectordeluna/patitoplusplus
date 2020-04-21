@@ -17,7 +17,7 @@ calc_grammar = """
 
     ?arrm : LBRAKE (INTEGER | ID) RBRAKE
 
-    ?tipo : INT 
+    ?tipo : INT -> getTipo
     | FLOAT 
 
     ?return_val: "void"
@@ -152,8 +152,14 @@ class tablaVars(Transformer):
         self.vars = {}
 
     def assign_var(self, name, value):
-        self.vars[name] = value
+        if name in self.vars:
+            raise ValueError(name + " already defined")
+        else:
+            self.vars[name] = { 'type': self.currType, 'value': value }
         return Tree('var', self.vars[name])
+
+    def getTipo(self, tipo):
+        self.currType = tipo
 
     def var(self, name):
         return Tree('var', self.vars[name])

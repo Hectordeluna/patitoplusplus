@@ -1,4 +1,4 @@
-from lark import Lark, Transformer, v_args
+from lark import Lark, Transformer, v_args, Tree
 import os
 import sys
 import codecs
@@ -23,8 +23,8 @@ calc_grammar = """
     ?return_val: "void"
     | tipo 
 
-    ?args : tipo var ("," tipo var)?
-    ?func : FUNCTION return_val ID LPAREN (tipo var) RPAREN vars?
+    ?args_func : tipo var ("," tipo var)?
+    ?func : FUNCTION return_val ID LPAREN args_func* RPAREN vars?
 
     ?bloque : LBRACE estatuto* RBRACE 
 
@@ -38,7 +38,7 @@ calc_grammar = """
     | read
     | for_loop
 
-    ?asignacion : var ASSING expresion SEMI
+    ?asignacion : var ASSIGN expresion SEMI -> assign_var
 
     ?escritura : PRINT LPAREN escritura_exp RPAREN SEMI
     ?escritura_exp: STRING escritura_exp_comma?
@@ -51,7 +51,7 @@ calc_grammar = """
     ?else : ELSE bloque
 
     ?while: WHILE LPAREN expresion RPAREN DO bloque
-    ?for_loop: FROM var ASSING expresion TO expresion DO (bloque | estatuto)
+    ?for_loop: FROM var ASSIGN expresion TO expresion DO (bloque | estatuto)
 
     ?exp : termino exp_2?
     ?exp_2 : PLUS exp 
@@ -85,8 +85,8 @@ calc_grammar = """
     | exp exp_s exp
     ?exp_l : OR
     | AND
-    ?exp_s : GREATER ASSING
-    | LESS ASSING 
+    ?exp_s : GREATER ASSIGN
+    | LESS ASSIGN
     | LESS 
     | GREATER 
     | DIFF
@@ -113,7 +113,7 @@ calc_grammar = """
     NUMBER : /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
     PLUS: "+"
     MINUS: "-"
-    ASSING: "="
+    ASSIGN: "="
     TIMES: "*"
     COLON: ":"
     DIVIDE: "/"
@@ -145,9 +145,21 @@ calc_grammar = """
     %ignore COMMENT
 """
 
+class tablaVars(Transformer):
+    from operator import add, sub, mul, truediv as div, neg
+
+    def __init__(self):
+        self.vars = {}
+
+    def assign_var(self, name, value):
+        self.vars[name] = value
+        return Tree('var', self.vars[name])
+
+    def var(self, name):
+        return Tree('var', self.vars[name])
+
 duck_parser = Lark(calc_grammar, parser='lalr',debug=True)
 duck = duck_parser.parse
-
 
 def main():
     while True:

@@ -1,12 +1,19 @@
 from lark import Transformer, Tree
+from Quadruple import *
+from Stack import *
 
+stackOp = Stack(False)
+stackJumps = Stack(False)
+stackVar = Stack(False)
+stackType = Stack(False)
+ops = {"+": (lambda a,b: a+b), "-": (lambda a,b: a-b), "*": (lambda a,b: a*b), "/": (lambda a,b: a/b)}
 def pretty(d, indent=0):
    for key, value in d.items():
       print('\t' * indent + str(key))
       if isinstance(value, dict):
          pretty(value, indent+1)
       else:
-         print('\t' * (indent+1) + str(value))
+         print('\t' * (indent+1) + str(value))  
 
 class TransformerLark(Transformer):
 
@@ -15,6 +22,7 @@ class TransformerLark(Transformer):
         self.currType = ""
         self.currFunction = "___global___"
         self.currVar = ""
+        self.quadruples = []
 
     def program_id(self, args):
         self.currFunction = "___global___"
@@ -56,4 +64,116 @@ class TransformerLark(Transformer):
 
     def var(self, args):
         self.currVar = args[0]
-        return Tree('var', args)      
+        stackVar.push(args[0].value)
+        stackType.push(self.findbyType(args[0].value))
+        return Tree('var', args)     
+
+    def integer(self, args):
+        stackVar.push(int(args[0].value))
+        stackType.push('int')
+        return Tree('integer', args)  
+
+    def number(self, args):
+        stackVar.push(int(args[0].value))
+        stackType.push('int')
+        return Tree('integer', args) 
+
+    def times_divide(self, args):
+        stackOp.push(args[0].value)
+        return Tree('times', args)  
+
+    def plus_minus(self, args):
+        stackOp.push(args[0].value)
+        return Tree('plus', args)  
+
+    def assign(self, args):
+        stackOp.push("=")
+        return Tree('equal', args)
+
+
+    def termino(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "+" or top == "-":
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                # Aqui va la tabla semantica
+                # con left operand y right operand y operator
+                # si no se puede regresa false
+                result_type = "int"
+                if result_type != False:
+                    # aqui se transforma al type que
+                    # es, int es un placeholder
+                    left_typed = int(left_operand)
+                    right_typed = int(right_operand)
+                    result = ops[operator](left_typed, right_typed)
+                    quad = Quadruple(operator, left_operand, right_operand, result)
+                    self.quadruples.append(quad.getQuad())
+                    stackVar.push(result)
+                    stackType.push(result_type)
+                else:
+                    print("error")
+        return ('termino', args)
+
+
+    def factor(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "*" or top == "/":
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                # Aqui va la tabla semantica
+                # con left operand y right operand y operator
+                # si no se puede regresa false
+                result_type = "int"
+                if result_type != False:
+                    # aqui se transforma al type que
+                    # es, int es un placeholder
+                    left_typed = int(left_operand)
+                    right_typed = int(right_operand)
+                    result = ops[operator](left_typed, right_typed)
+                    quad = Quadruple(operator, left_operand, right_operand, result)
+                    self.quadruples.append(quad.getQuad())
+                    stackVar.push(result)
+                    stackType.push(result_type)
+                else:
+                    print("error")
+        return ('factor', args)
+           
+
+    def ended(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "=":
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                result_type = "int"
+                if result_type != False:
+                    quad = Quadruple(operator, right_operand, None, left_operand)
+                    self.quadruples.append(quad.getQuad())
+                else:
+                    print("error")
+
+    def findbyType(self, var):
+        if var in self.functions[self.currFunction]['vars']:
+            return self.functions[self.currFunction]['vars'][var]['type'].value
+        elif var in self.functions["___global___"]['vars']:
+            return self.functions["___global___"]['vars'][var]['type'].value
+        return False
+
+    def lparen(self, args):
+        stackOp.push(args[0].value)
+        return Tree("lparen", args)
+
+    def rparen(self, args):
+        stackOp.pop()
+        return Tree("rparen", args)

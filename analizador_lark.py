@@ -44,59 +44,72 @@ calc_grammar = r"""
     | read
     | for_loop
 
-    asignacion : var ASSIGN expresion SEMI -> assign_var
+    asignacion : var assign exp ended -> assign_var
+    ended: SEMI
+
 
     escritura : PRINT LPAREN escritura_exp RPAREN SEMI
     escritura_exp: STRING escritura_exp_comma?
-    | expresion escritura_exp_comma?
+    | exp escritura_exp_comma?
     escritura_exp_comma: "," escritura_exp
 
     return: RETURN LPAREN exp RPAREN SEMI
 
-    condicion : IF LPAREN expresion RPAREN THEN bloque else?
+    condicion : IF LPAREN exp RPAREN THEN bloque else?
     else : ELSE bloque
 
-    while: WHILE LPAREN expresion RPAREN DO bloque
-    for_loop: FROM var ASSIGN expresion TO expresion DO (bloque | estatuto)
+    while: WHILE LPAREN exp RPAREN DO bloque
+    for_loop: FROM var assign exp TO exp DO (bloque | estatuto)
 
-    exp : termino exp_2?
-    exp_2 : PLUS exp 
-    | MINUS exp
+    exp : termino op1?
+    op1 : plus_minus exp 
+          
+    plus_minus: PLUS_MINUS
 
-    termino : factor ter?
-    ter : TIMES termino
-    | DIVIDE termino
+    termino : factor op2?
+    op2 : times_divide termino
 
-    call: ID LPAREN call_args RPAREN
-    call_args: expresion "," call_args
-    | expresion
+    times_divide: TIMES_DIVIDE
 
-    factor : LPAREN expresion RPAREN
+    factor : var
+            | number
             | call
             | PLUS var_cte 
             | MINUS var_cte 
-            | var_cte
+            | lparen exp_log_or rparen
 
-    var_cte : var 
-    | cte EXCL
+    call: ID LPAREN call_args RPAREN
+    call_args: exp "," call_args
+    | exp
+
+
+    var_cte : cte EXCL
     | cte QUES
     | cte
 
-    cte : INTEGER
-    | NUMBER
+    cte : integer
+    | number
+    integer: INTEGER
+    number: NUMBER
 
 
-    expresion : exp
-    | expresion exp_l expresion
-    | exp exp_s exp
-    exp_l : OR
-    | AND
-    exp_s : GREATER ASSIGN
+    exp_log_or: exp_log_and op3?
+    op3: OR exp_log_or
+    exp_log_and: exp_comp op4?
+    op4: AND exp_log_and
+    exp_comp: exp op5 exp
+        | exp
+    op5 : GREATER ASSIGN
     | LESS ASSIGN 
     | LESS 
     | GREATER 
     | DIFF
     | EQUAL
+
+
+    assign: ASSIGN
+    lparen: LPAREN
+    rparen: RPAREN
 
     IF: "si"
     THEN: "entonces"
@@ -119,6 +132,8 @@ calc_grammar = r"""
     ID : WORD
     NUMBER : /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
     PLUS: "+"
+    TIMES_DIVIDE: "*" | "/"
+    PLUS_MINUS: "+" | "-"
     MINUS: "-"
     ASSIGN: "="
     TIMES: "*"

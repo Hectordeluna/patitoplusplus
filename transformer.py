@@ -1,11 +1,13 @@
 from lark import Transformer, Tree
 from Quadruple import *
 from Stack import *
+from Semantic import *
 
 stackOp = Stack(False)
 stackJumps = Stack(False)
 stackVar = Stack(False)
 stackType = Stack(False)
+semTable = Semantic()
 ops = {"+": (lambda a,b: a+b), "-": (lambda a,b: a-b), "*": (lambda a,b: a*b), "/": (lambda a,b: a/b)}
 def pretty(d, indent=0):
    for key, value in d.items():
@@ -13,7 +15,7 @@ def pretty(d, indent=0):
       if isinstance(value, dict):
          pretty(value, indent+1)
       else:
-         print('\t' * (indent+1) + str(value))  
+         print('\t' * (indent+1) + str(value)) 
 
 class TransformerLark(Transformer):
 
@@ -100,15 +102,14 @@ class TransformerLark(Transformer):
                 left_operand = stackVar.pop()
                 left_type = stackType.pop()
                 operator = stackOp.pop()
-                # Aqui va la tabla semantica
-                # con left operand y right operand y operator
-                # si no se puede regresa false
-                result_type = "int"
+                result_type = semTable.result(left_type, right_type, operator)
                 if result_type != False:
-                    # aqui se transforma al type que
-                    # es, int es un placeholder
-                    left_typed = int(left_operand)
-                    right_typed = int(right_operand)
+                    if result_type == "int":
+                        left_typed = int(left_operand)
+                        right_typed = int(right_operand)
+                    elif result_type == "float":
+                        left_typed = float(left_operand)
+                        right_typed = float(right_operand)
                     result = ops[operator](left_typed, right_typed)
                     quad = Quadruple(operator, left_operand, right_operand, result)
                     self.quadruples.append(quad.getQuad())
@@ -128,15 +129,14 @@ class TransformerLark(Transformer):
                 left_operand = stackVar.pop()
                 left_type = stackType.pop()
                 operator = stackOp.pop()
-                # Aqui va la tabla semantica
-                # con left operand y right operand y operator
-                # si no se puede regresa false
-                result_type = "int"
+                result_type = semTable.result(left_type, right_type, operator)
                 if result_type != False:
-                    # aqui se transforma al type que
-                    # es, int es un placeholder
-                    left_typed = int(left_operand)
-                    right_typed = int(right_operand)
+                    if result_type == "int":
+                        left_typed = int(left_operand)
+                        right_typed = int(right_operand)
+                    elif result_type == "float":
+                        left_typed = float(left_operand)
+                        right_typed = float(right_operand)
                     result = ops[operator](left_typed, right_typed)
                     quad = Quadruple(operator, left_operand, right_operand, result)
                     self.quadruples.append(quad.getQuad())
@@ -156,7 +156,7 @@ class TransformerLark(Transformer):
                 left_operand = stackVar.pop()
                 left_type = stackType.pop()
                 operator = stackOp.pop()
-                result_type = "int"
+                result_type = semTable.result(left_type, right_type, operator)
                 if result_type != False:
                     quad = Quadruple(operator, right_operand, None, left_operand)
                     self.quadruples.append(quad.getQuad())

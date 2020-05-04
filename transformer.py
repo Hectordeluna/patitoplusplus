@@ -8,7 +8,21 @@ stackJumps = Stack(False)
 stackVar = Stack(False)
 stackType = Stack(False)
 semTable = Semantic()
-ops = {"+": (lambda a,b: a+b), "-": (lambda a,b: a-b), "*": (lambda a,b: a*b), "/": (lambda a,b: a/b)}
+ops = {
+    "+": (lambda a,b: a+b), 
+    "-": (lambda a,b: a-b), 
+    "*": (lambda a,b: a*b), 
+    "/": (lambda a,b: a/b), 
+    "AND": (lambda a,b: a and b), 
+    "OR": (lambda a,b: a or b), 
+    ">": (lambda a,b: a > b),
+    ">=": (lambda a,b: a >= b),
+    "==": (lambda a,b: a == b),
+    "<": (lambda a,b: a < b),
+    "!=": (lambda a,b: a != b),
+    "<=": (lambda a,b: a <= b)
+}
+t_num = 0
 def pretty(d, indent=0):
    for key, value in d.items():
       print('\t' * indent + str(key))
@@ -92,6 +106,117 @@ class TransformerLark(Transformer):
         stackOp.push("=")
         return Tree('equal', args)
 
+    def op4(self, args):
+        stackOp.push("AND")
+        return Tree('op4', args)
+
+    def op3(self, args):
+        stackOp.push("OR")
+        return Tree('op3', args)
+
+    def op5(self, args):
+        stackOp.push(args[0].value)
+        return Tree('op5', args)
+
+    def while_key(self, args):
+        stackJumps.push(len(self.quadruples))
+        return Tree('while_key', args)
+
+    def end_exp_log(self, args):
+        if stackType.size() > 0:
+            exp_type = stackType.pop()
+            if exp_type != "bool":
+                res = stackVar.pop()
+                quad = Quadruple("GotoF", res, None, None)
+                self.quadruples.append(quad.getQuad())
+                stackJumps.push(len(self.quadruples) - 1)
+            else:
+                print("error")
+        return Tree('end_exp_log', args)
+
+    def fin_bloque(self, args):
+        if stackJumps.size() > 0:
+            end = stackJumps.pop()
+            if stackJumps.size() > 0:
+                ret = stackJumps.pop()
+                quad = Quadruple("Goto", ret, None, None)
+                self.quadruples.append(quad.getQuad()) 
+            self.quadruples[end][3] = len(self.quadruples)
+        return Tree('fin_bloque', args)
+
+    def print_exp(self, args):
+        stackOp.push("print")
+        return Tree('print_exp', args)
+
+    def end_print(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "print":
+                result = stackVar.pop()
+                operator = stackOp.pop()
+                quad = Quadruple(operator, None, None, result)
+                self.quadruples.append(quad.getQuad())     
+        return Tree('end_print', args)
+
+    def exp_comp(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == ">" or top == "<" or top == "!=" or top == "==" or top == "<=" or top == ">=":
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                result_type = semTable.result(left_type, right_type, operator)
+                if result_type != False:
+                    result = ops[operator](left_operand, right_operand)
+                    quad = Quadruple(operator, left_operand, right_operand, result)
+                    self.quadruples.append(quad.getQuad())
+                    stackVar.push(result)
+                    stackType.push(result_type)
+                else:
+                    print("error")
+        return Tree('exp_comp', args)
+
+    def exp_log_or(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "OR":
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                result_type = semTable.result(left_type, right_type, operator)
+                if result_type != False:
+                    result = ops[operator](left_operand, right_operand)
+                    quad = Quadruple(operator, left_operand, right_operand, result)
+                    self.quadruples.append(quad.getQuad())
+                    stackVar.push(result)
+                    stackType.push(result_type)
+                else:
+                    print("error")
+        return ('exp_log_or', args)     
+
+    def exp_log_and(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "AND":
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                result_type = semTable.result(left_type, right_type, operator)
+                if result_type != False:
+                    result = ops[operator](left_operand, right_operand)
+                    quad = Quadruple(operator, left_operand, right_operand, result)
+                    self.quadruples.append(quad.getQuad())
+                    stackVar.push(result)
+                    stackType.push(result_type)
+                else:
+                    print("error")
+        return ('exp_log_or', args)      
 
     def termino(self, args):
         if stackOp.size() > 0:

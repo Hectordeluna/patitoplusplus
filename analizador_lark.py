@@ -32,9 +32,12 @@ calc_grammar = r"""
     func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* RPAREN vars?
     func_name: ID
 
-    bloque : LBRACE estatuto* RBRACE 
+    bloque : LBRACE estatuto* fin_bloque
+    fin_bloque : RBRACE 
 
-    read: READ LPAREN ID RPAREN SEMI
+    read: read_emp LPAREN ID RPAREN read_end
+    read_emp : READ
+    read_end : SEMI
 
     estatuto : asignacion 
     | condicion 
@@ -48,7 +51,9 @@ calc_grammar = r"""
     ended: SEMI
 
 
-    escritura : PRINT LPAREN escritura_exp RPAREN SEMI
+    escritura : print_exp LPAREN escritura_exp RPAREN end_print
+    end_print : SEMI
+    print_exp : PRINT
     escritura_exp: STRING escritura_exp_comma?
     | exp escritura_exp_comma?
     escritura_exp_comma: "," escritura_exp
@@ -58,7 +63,9 @@ calc_grammar = r"""
     condicion : IF LPAREN exp RPAREN THEN bloque else?
     else : ELSE bloque
 
-    while: WHILE LPAREN exp RPAREN DO bloque
+    while: while_key LPAREN exp end_exp_log DO bloque 
+    end_exp_log: RPAREN
+    while_key: WHILE
     for_loop: FROM var assign exp TO exp DO (bloque | estatuto)
 
     exp : termino op1?
@@ -76,11 +83,11 @@ calc_grammar = r"""
             | call
             | PLUS var_cte 
             | MINUS var_cte 
-            | lparen exp_log_or rparen
+            | LPAREN exp_log_or RPAREN
 
-    call: ID LPAREN call_args RPAREN
-    call_args: exp "," call_args
-    | exp
+    call: ID LPAREN call_args? RPAREN
+    call_args: exp call_args_comma?
+    call_args_comma: "," call_args
 
 
     var_cte : cte EXCL
@@ -98,7 +105,7 @@ calc_grammar = r"""
     exp_log_and: exp_comp op4?
     op4: AND exp_log_and
     exp_comp: exp op5 exp
-        | exp
+    | exp
     op5 : GREATER ASSIGN
     | LESS ASSIGN 
     | LESS 

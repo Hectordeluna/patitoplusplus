@@ -1,7 +1,12 @@
 programa expresiones;
 var
-  int e;
+  int e, t;
+  int matrix[10][10];
 
 principal() {
-  e =  4 + (2 * (4 + 5));
+  a = 3;
+  escribe(10 + 12);
+  mientras ((10 > 20 && 12 < 30)) haz {
+    escribe(10 + 30);
+  }
 }

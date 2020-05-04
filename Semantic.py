@@ -36,3 +36,12 @@ class Semantic:
 				return "float"
 			else:
 				return False
+		elif op == ">" or op == "<":
+			if left == "int" and right == "int":
+				return "bool"
+			elif left == "int" and right == "float":
+				return "bool"
+			elif left == "float" and right == "int":
+				return "bool"
+			else:
+				return False

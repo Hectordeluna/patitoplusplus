@@ -146,6 +146,7 @@ class TransformerLark(Transformer):
                 quad = Quadruple("Goto", ret, None, None)
                 self.quadruples.append(quad.getQuad()) 
             self.quadruples[end][3] = len(self.quadruples)
+            print(self.quadruples)
         return Tree('fin_bloque', args)
 
     def if_key(self, args):

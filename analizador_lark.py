@@ -60,13 +60,17 @@ calc_grammar = r"""
 
     return: RETURN LPAREN exp RPAREN SEMI
 
-    condicion : IF LPAREN exp RPAREN THEN bloque else?
-    else : ELSE bloque
+    condicion: IF LPAREN exp RPAREN THEN bloque else?
+    if_key: RPAREN
+    else: else_key bloque
+    else_key: ELSE
 
     while: while_key LPAREN exp end_exp_log DO bloque 
     end_exp_log: RPAREN
     while_key: WHILE
-    for_loop: FROM var assign exp TO exp DO (bloque | estatuto)
+
+    for_loop: for_key var assign exp TO exp DO (bloque | estatuto)
+    for_key: FROM
 
     exp : termino op1?
     op1 : plus_minus exp 

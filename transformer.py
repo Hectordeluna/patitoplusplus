@@ -85,12 +85,11 @@ class TransformerLark(Transformer):
     def func_vars(self, args):
         self.functions[self.currFunction]['local_size'] = abs(len(self.functions[self.currFunction]['vars']) - self.functions[self.currFunction]['params_size'])
         self.functions[self.currFunction]['quad_count'] = len(self.quadruples)
-        print(self.functions[self.currFunction]['quad_count'])
-
         return Tree('end_func_decl', args)     
 
     def call_name(self, args):
-        # Verficia si existe
+        if args[0].value not in self.functions:
+            print("ERROR func not found")
         return Tree('call_name', args)  
 
     def gen_era(self, args):

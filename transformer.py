@@ -135,7 +135,7 @@ class TransformerLark(Transformer):
                 self.quadruples.append(quad.getQuad())
                 stackJumps.push(len(self.quadruples) - 1)
             else:
-                print("error")
+                print("error end_exp_log")
         return Tree('end_exp_log', args)
 
     def fin_bloque(self, args):
@@ -143,32 +143,44 @@ class TransformerLark(Transformer):
             end = stackJumps.pop()
             if stackJumps.size() > 0:
                 ret = stackJumps.pop()
-                quad = Quadruple("Goto", ret, None, None)
+                quad = Quadruple("Goto", None, None, ret)
                 self.quadruples.append(quad.getQuad()) 
-            self.quadruples[end][3] = len(self.quadruples)
+                print(len(self.quadruples))
+            self.quadruples[end][3] = len(self.quadruples) + 1
             print(self.quadruples)
         return Tree('fin_bloque', args)
+
+    def if_bloque(self, args):
+        if stackJumps.size() > 0:
+            end = stackJumps.pop()
+            if stackJumps.size() > 0:
+                ret = stackJumps.pop()
+                self.quadruples[ret][3] = len(self.quadruples) + 1
+                quad = Quadruple("Goto", None, None, ret)
+                self.quadruples.append(quad.getQuad()) 
+            self.quadruples[end][3] = len(self.quadruples) + 1
+        return Tree('if_bloque', args)       
 
     def if_key(self, args):
         if stackType.size() > 0:
             exp_type = stackType.pop()
-            if exp_type != "bool":
+            if exp_type == "bool":
                 result = stackVar.pop()
                 quad = Quadruple("GotoF", result, None, None)
                 self.quadruples.append(quad.getQuad())
                 stackJumps.push(len(self.quadruples) - 1)
             else:
-                print("error")
+                print("error if_key")
         return Tree('if_key', args)
 
     def else_key(self, args):
+        stackJumps.print()
         if stackJumps.size() > 0:
-            res = stackVar.pop()
-            quad = Quadruple("Goto", res, None, None)
-            self.quadruples.append(quad.getQuad())
+            end = stackJumps.pop()
+            quad = Quadruple("Goto", None, None, None)
+            self.quadruples.append(quad.getQuad()) 
             stackJumps.push(len(self.quadruples) - 1)
-        else:
-            print("error")
+            self.quadruples[end][3] = len(self.quadruples) + 1
         return Tree('else_key', args)
 
     def print_exp(self, args):
@@ -202,7 +214,7 @@ class TransformerLark(Transformer):
                     stackVar.push(result)
                     stackType.push(result_type)
                 else:
-                    print("error")
+                    print("error exp_comp")
         return Tree('exp_comp', args)
 
     def exp_log_or(self, args):
@@ -222,7 +234,7 @@ class TransformerLark(Transformer):
                     stackVar.push(result)
                     stackType.push(result_type)
                 else:
-                    print("error")
+                    print("error exp_log_or")
         return ('exp_log_or', args)     
 
     def exp_log_and(self, args):
@@ -242,7 +254,7 @@ class TransformerLark(Transformer):
                     stackVar.push(result)
                     stackType.push(result_type)
                 else:
-                    print("error")
+                    print("error exp_log_and")
         return ('exp_log_or', args)      
 
     def termino(self, args):
@@ -268,7 +280,7 @@ class TransformerLark(Transformer):
                     stackVar.push(result)
                     stackType.push(result_type)
                 else:
-                    print("error")
+                    print("error termino")
         return ('termino', args)
 
 

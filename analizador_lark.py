@@ -32,8 +32,7 @@ calc_grammar = r"""
     func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* RPAREN vars?
     func_name: ID
 
-    bloque : LBRACE estatuto* fin_bloque
-    fin_bloque : RBRACE 
+    bloque : LBRACE estatuto* RBRACE
 
     read: read_emp LPAREN ID RPAREN read_end
     read_emp : READ
@@ -60,12 +59,14 @@ calc_grammar = r"""
 
     return: RETURN LPAREN exp RPAREN SEMI
 
-    condicion: IF LPAREN exp RPAREN THEN bloque else?
+    condicion: IF LPAREN exp if_key THEN if_bloque
+    if_bloque: bloque else?
     if_key: RPAREN
     else: else_key bloque
     else_key: ELSE
 
-    while: while_key LPAREN exp end_exp_log DO bloque 
+    while: while_key LPAREN exp end_exp_log DO fin_bloque 
+    fin_bloque: bloque
     end_exp_log: RPAREN
     while_key: WHILE
 

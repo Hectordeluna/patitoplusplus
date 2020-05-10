@@ -8,6 +8,7 @@ stackJumps = Stack(False)
 stackVar = Stack(False)
 stackType = Stack(False)
 semTable = Semantic()
+currParams = Stack(False)
 ops = {
     "+": (lambda a,b: a+b), 
     "-": (lambda a,b: a-b), 
@@ -31,6 +32,12 @@ def pretty(d, indent=0):
       else:
          print('\t' * (indent+1) + str(value)) 
 
+def prettyList(d, indent=0):
+    count = 0
+    for value in d:
+        print(str(count) + " " + '\t' * indent + str(value))
+        count = count + 1
+
 class TransformerLark(Transformer):
 
     def __init__(self):
@@ -39,6 +46,7 @@ class TransformerLark(Transformer):
         self.currFunction = "___global___"
         self.currVar = ""
         self.quadruples = []
+        self.currFuncCounter = 0
 
     def program_id(self, args):
         self.currFunction = "___global___"
@@ -46,15 +54,75 @@ class TransformerLark(Transformer):
         return Tree('program', args)
 
     def func_name(self, args):
-        self.currFunction = args[0]
+        self.currFunction = args[0].value
+        currParams.clean()
+        self.currFuncCounter = 0
         if args[0] in self.functions:
           raise ValueError(args[0] + " already defined")
         else:
-          self.functions[args[0]] = { 'type': self.currType, 'vars': {} }
+          self.functions[args[0]] = { 'type': self.currType, 'vars': {}, 'params': {} }
         return Tree('func_name', args)
+
+    def end_func_decl(self, args):
+        self.functions[self.currFunction]['params_size'] = self.currFuncCounter
+        return Tree('end_func_decl', args)
+
+    def args_func(self, args):
+        if currParams.size() > 0:
+            top = currParams.pop()
+            var = top["var"].value
+            typ = top["type"].value
+            self.functions[self.currFunction]['params'][self.currFuncCounter] = { 'var': var, 'type': typ }
+            self.currFuncCounter = self.currFuncCounter + 1
+
+    def func_bloque(self, args):
+        self.functions[self.currFunction]['vars'] = {}
+        quad = Quadruple("ENDFunc", None, None, None)
+        self.quadruples.append(quad.getQuad())
+        # Falta el numbero de Ts usadas
+        
+
+    def func_vars(self, args):
+        self.functions[self.currFunction]['local_size'] = abs(len(self.functions[self.currFunction]['vars']) - self.functions[self.currFunction]['params_size'])
+        self.functions[self.currFunction]['quad_count'] = len(self.quadruples)
+        print(self.functions[self.currFunction]['quad_count'])
+
+        return Tree('end_func_decl', args)     
+
+    def call_name(self, args):
+        # Verficia si existe
+        return Tree('call_name', args)  
+
+    def gen_era(self, args):
+        quad = Quadruple("ERA", self.functions[self.currFunction]['params_size'], None, None)
+        self.quadruples.append(quad.getQuad())
+        self.currFuncCounter = 0
+        return Tree('gen_era', args)
+
+    def call_var(self, args):
+        if stackVar.size() > 0:
+            argument = stackVar.pop()
+            typ = stackType.pop()
+            param = self.functions[self.currFunction]['params'][self.currFuncCounter]
+            if param["type"] == typ:
+                quad = Quadruple("PARAMETER", argument, self.currFuncCounter + 1, None) 
+                self.currFuncCounter = self.currFuncCounter + 1
+                self.quadruples.append(quad.getQuad())
+            else:
+                print("TYPE mismatch")
+        return Tree('call_var', args)
     
+    def call_end(self, args):
+        if self.currFuncCounter < len(self.functions[self.currFunction]['params']):
+            print("error not enough parameters")
+            print(self.currFuncCounter)
+        else:
+            quad = Quadruple("GOSUB", self.currFunction, None, self.functions[self.currFunction]['quad_count']) 
+            self.quadruples.append(quad.getQuad())
+
+
     def return_val(self, args):
-        self.currType = args[0]
+        self.currType = args[0].value
         return Tree('return_val', args)
 
     def tipo(self, defType):
@@ -67,6 +135,7 @@ class TransformerLark(Transformer):
             raise ValueError(var  + " already defined")
         else:
             self.functions[self.currFunction]['vars'][var] = { 'type': self.currType }
+            currParams.push({ "var": var, "type": self.currType })
         return Tree('decl_var', args)      
     
     def lista_var(self, args):
@@ -126,6 +195,12 @@ class TransformerLark(Transformer):
         stackJumps.push(len(self.quadruples))
         return Tree('for_key', args)
 
+    def return_str(self, args):
+        stackOp.push('return')
+        funcType = self.functions[self.currFunction]['type']
+        stackType.push(funcType)
+        return Tree('return_str', args)
+
     def end_exp_log(self, args):
         if stackType.size() > 0:
             exp_type = stackType.pop()
@@ -145,9 +220,7 @@ class TransformerLark(Transformer):
                 ret = stackJumps.pop()
                 quad = Quadruple("Goto", None, None, ret)
                 self.quadruples.append(quad.getQuad()) 
-                print(len(self.quadruples))
-            self.quadruples[end][3] = len(self.quadruples) + 1
-            print(self.quadruples)
+            self.quadruples[end][3] = len(self.quadruples)
         return Tree('fin_bloque', args)
 
     def if_bloque(self, args):
@@ -155,10 +228,10 @@ class TransformerLark(Transformer):
             end = stackJumps.pop()
             if stackJumps.size() > 0:
                 ret = stackJumps.pop()
-                self.quadruples[ret][3] = len(self.quadruples) + 1
+                self.quadruples[ret][3] = len(self.quadruples)
                 quad = Quadruple("Goto", None, None, ret)
                 self.quadruples.append(quad.getQuad()) 
-            self.quadruples[end][3] = len(self.quadruples) + 1
+            self.quadruples[end][3] = len(self.quadruples)
         return Tree('if_bloque', args)       
 
     def if_key(self, args):
@@ -180,7 +253,7 @@ class TransformerLark(Transformer):
             quad = Quadruple("Goto", None, None, None)
             self.quadruples.append(quad.getQuad()) 
             stackJumps.push(len(self.quadruples) - 1)
-            self.quadruples[end][3] = len(self.quadruples) + 1
+            self.quadruples[end][3] = len(self.quadruples) + 2
         return Tree('else_key', args)
 
     def print_exp(self, args):
@@ -327,6 +400,21 @@ class TransformerLark(Transformer):
                 else:
                     print("error")
 
+    def return_exp(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top == "return":
+                stackType.print()
+                right_operand = stackVar.pop()
+                right_type = stackType.pop()
+                left_type = stackType.pop()
+                operator = stackOp.pop()
+                if left_type == right_type:
+                    quad = Quadruple(operator, None, None, right_operand)
+                    self.quadruples.append(quad.getQuad())
+                else:
+                    print("error")       
+
     def findbyType(self, var):
         if var in self.functions[self.currFunction]['vars']:
             return self.functions[self.currFunction]['vars'][var]['type'].value
@@ -341,3 +429,6 @@ class TransformerLark(Transformer):
     def rparen(self, args):
         stackOp.pop()
         return Tree("rparen", args)
+
+    def end_program(self, args):
+        prettyList(self.quadruples)

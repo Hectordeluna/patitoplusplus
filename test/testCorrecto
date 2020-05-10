@@ -3,7 +3,24 @@ var
   int e, t;
   int matrix[10][10];
 
+funcion int fact(int j, int y)
+var int i;
+ {
+  i = 10 + 10;
+  si ((5 < 10)) entonces {
+    b = 10;
+  } 
+}
+
+funcion int func(int j, int y)
+var int i;
+ {
+  i = 10 + 10;
+  regresa(10);
+}
+
 principal() {
+  fact(5, 3);
   a = 3;
   escribe(10 + 12);
   si ((5 > 2)) entonces {
@@ -16,4 +33,6 @@ principal() {
   mientras ((10 > 20 && 12 < 30)) haz {
     escribe(10 + 30);
   }
+  func(10, 15);
 }
+ended

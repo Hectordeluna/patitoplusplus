@@ -9,9 +9,12 @@ calc_grammar = r"""
 
     program_id : ID
     program : PROGRAM program_id SEMI program_es
-    program_es : vars (func bloque)* main_func
+    program_es : vars (exec_func func_bloque)* main_func
     | bloque
-    main_func : MAIN LPAREN RPAREN bloque
+    exec_func: func
+    func_bloque : bloque
+    main_func : MAIN LPAREN RPAREN bloque end_program
+    end_program: "ended"
 
     var : ID arrm? arrm? "$"?
     decl_var : tipo ID arrm? arrm? "$"?
@@ -29,7 +32,9 @@ calc_grammar = r"""
     | FLOAT 
 
     args_func : decl_var
-    func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* RPAREN vars?
+    func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* end_func_decl func_vars?
+    func_vars: vars
+    end_func_decl: RPAREN
     func_name: ID
 
     bloque : LBRACE estatuto* RBRACE
@@ -45,6 +50,7 @@ calc_grammar = r"""
     | return
     | read
     | for_loop
+    | call SEMI
 
     asignacion : var assign exp ended -> assign_var
     ended: SEMI
@@ -57,7 +63,9 @@ calc_grammar = r"""
     | exp escritura_exp_comma?
     escritura_exp_comma: "," escritura_exp
 
-    return: RETURN LPAREN exp RPAREN SEMI
+    return: return_str LPAREN return_exp RPAREN SEMI
+    return_str: RETURN
+    return_exp: exp
 
     condicion: IF LPAREN exp if_key THEN if_bloque
     if_bloque: bloque else?
@@ -84,14 +92,18 @@ calc_grammar = r"""
     times_divide: TIMES_DIVIDE
 
     factor : var
-            | number
             | call
+            | number
             | PLUS var_cte 
             | MINUS var_cte 
             | LPAREN exp_log_or RPAREN
 
-    call: ID LPAREN call_args? RPAREN
-    call_args: exp call_args_comma?
+    call: call_name gen_era call_args? call_end
+    call_end: RPAREN
+    gen_era: LPAREN
+    call_name: ID
+    call_args: call_var call_args_comma?
+    call_var: exp
     call_args_comma: "," call_args
 
 

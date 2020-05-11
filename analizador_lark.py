@@ -59,23 +59,22 @@ calc_grammar = r"""
     escritura : print_exp LPAREN escritura_exp RPAREN end_print
     end_print : SEMI
     print_exp : PRINT
-    escritura_exp: STRING escritura_exp_comma?
-    | exp escritura_exp_comma?
+    escritura_exp: exp escritura_exp_comma?
     escritura_exp_comma: "," escritura_exp
 
     return: return_str LPAREN return_exp RPAREN SEMI
     return_str: RETURN
     return_exp: exp
 
-    condicion: IF LPAREN exp if_key THEN if_bloque
+    condicion: IF exp if_key if_bloque
     if_bloque: bloque else?
-    if_key: RPAREN
+    if_key: THEN
     else: else_key bloque
     else_key: ELSE
 
-    while: while_key LPAREN exp end_exp_log DO fin_bloque 
+    while: while_key exp DO fin_bloque 
     fin_bloque: bloque
-    end_exp_log: RPAREN
+    end_exp_log: DO
     while_key: WHILE
 
     for_loop: for_key var assign exp TO exp DO (bloque | estatuto)
@@ -94,9 +93,12 @@ calc_grammar = r"""
     factor : var
             | call
             | number
+            | string
             | PLUS var_cte 
             | MINUS var_cte 
             | LPAREN exp_log_or RPAREN
+
+    string: STRING
 
     call: call_name gen_era call_args? call_end
     call_end: RPAREN
@@ -105,7 +107,6 @@ calc_grammar = r"""
     call_args: call_var call_args_comma?
     call_var: exp
     call_args_comma: "," call_args
-
 
     var_cte : cte EXCL
     | cte QUES

@@ -45,3 +45,7 @@ class Semantic:
 				return "bool"
 			else:
 				return False
+		elif op == "return":
+			return left == right
+		elif op == "print":
+			return True

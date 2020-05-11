@@ -9,6 +9,7 @@ stackVar = Stack(False)
 stackType = Stack(False)
 semTable = Semantic()
 currParams = Stack(False)
+quadruples = []
 ops = {
     "+": (lambda a,b: a+b), 
     "-": (lambda a,b: a-b), 
@@ -38,6 +39,75 @@ def prettyList(d, indent=0):
         print(str(count) + " " + '\t' * indent + str(value))
         count = count + 1
 
+def genQuadOpLog(cond):
+    if stackOp.size() > 0:
+        top = stackOp.peek()
+        if top in cond:
+            right_operand = stackVar.pop()
+            right_type = stackType.pop()
+            left_operand = stackVar.pop()
+            left_type = stackType.pop()
+            operator = stackOp.pop()
+            result_type = semTable.result(left_type, right_type, operator)
+            if result_type != False:
+                result = ops[operator](left_operand, right_operand)
+                quad = Quadruple(operator, left_operand, right_operand, result)
+                quadruples.append(quad.getQuad())
+                stackVar.push(result)
+                stackType.push(result_type)
+            else:
+                print("error exp_log_or")
+
+def genQuadOpExp(cond):
+    if stackOp.size() > 0:
+        top = stackOp.peek()
+        if top in cond:
+            right_operand = stackVar.pop()
+            right_type = stackType.pop()
+            left_operand = stackVar.pop()
+            left_type = stackType.pop()
+            operator = stackOp.pop()
+            result_type = semTable.result(left_type, right_type, operator)
+            if result_type != False:
+                if result_type == "int":
+                    left_typed = int(left_operand)
+                    right_typed = int(right_operand)
+                elif result_type == "float":
+                    left_typed = float(left_operand)
+                    right_typed = float(right_operand)
+                result = ops[operator](left_typed, right_typed)
+                quad = Quadruple(operator, left_operand, right_operand, result)
+                quadruples.append(quad.getQuad())
+                stackVar.push(result)
+                stackType.push(result_type)
+            else:
+                print("error termino")
+
+def genQuadEndExp(cond):
+    if stackOp.size() > 0:
+        top = stackOp.peek()
+        if top in cond:
+            right_operand = stackVar.pop()
+            right_type = stackType.pop()
+            operator = stackOp.pop()
+            left_type = stackType.pop()
+            result_type = semTable.result(left_type, right_type, operator)
+            if result_type != False:
+                quad = Quadruple(operator, None, None, right_operand)
+                quadruples.append(quad.getQuad())
+            else:
+                print("error") 
+
+def genQuadGoto(): 
+    if stackJumps.size() > 0:
+        end = stackJumps.pop()
+        if stackJumps.size() > 0:
+            ret = stackJumps.pop()
+            quadruples[ret][3] = len(quadruples)
+            quad = Quadruple("Goto", None, None, ret)
+            quadruples.append(quad.getQuad()) 
+        quadruples[end][3] = len(quadruples)
+
 class TransformerLark(Transformer):
 
     def __init__(self):
@@ -45,7 +115,6 @@ class TransformerLark(Transformer):
         self.currType = ""
         self.currFunction = "___global___"
         self.currVar = ""
-        self.quadruples = []
         self.currFuncCounter = 0
 
     def program_id(self, args):
@@ -78,13 +147,13 @@ class TransformerLark(Transformer):
     def func_bloque(self, args):
         self.functions[self.currFunction]['vars'] = {}
         quad = Quadruple("ENDFunc", None, None, None)
-        self.quadruples.append(quad.getQuad())
+        quadruples.append(quad.getQuad())
         # Falta el numbero de Ts usadas
         
 
     def func_vars(self, args):
         self.functions[self.currFunction]['local_size'] = abs(len(self.functions[self.currFunction]['vars']) - self.functions[self.currFunction]['params_size'])
-        self.functions[self.currFunction]['quad_count'] = len(self.quadruples)
+        self.functions[self.currFunction]['quad_count'] = len(quadruples)
         return Tree('end_func_decl', args)     
 
     def call_name(self, args):
@@ -94,7 +163,7 @@ class TransformerLark(Transformer):
 
     def gen_era(self, args):
         quad = Quadruple("ERA", self.functions[self.currFunction]['params_size'], None, None)
-        self.quadruples.append(quad.getQuad())
+        quadruples.append(quad.getQuad())
         self.currFuncCounter = 0
         return Tree('gen_era', args)
 
@@ -106,7 +175,7 @@ class TransformerLark(Transformer):
             if param["type"] == typ:
                 quad = Quadruple("PARAMETER", argument, self.currFuncCounter + 1, None) 
                 self.currFuncCounter = self.currFuncCounter + 1
-                self.quadruples.append(quad.getQuad())
+                quadruples.append(quad.getQuad())
             else:
                 print("TYPE mismatch")
         return Tree('call_var', args)
@@ -114,11 +183,9 @@ class TransformerLark(Transformer):
     def call_end(self, args):
         if self.currFuncCounter < len(self.functions[self.currFunction]['params']):
             print("error not enough parameters")
-            print(self.currFuncCounter)
         else:
             quad = Quadruple("GOSUB", self.currFunction, None, self.functions[self.currFunction]['quad_count']) 
-            self.quadruples.append(quad.getQuad())
-
+            quadruples.append(quad.getQuad())
 
     def return_val(self, args):
         self.currType = args[0].value
@@ -133,7 +200,7 @@ class TransformerLark(Transformer):
         if var in self.functions[self.currFunction]['vars']:
             raise ValueError(var  + " already defined")
         else:
-            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType }
+            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType, 'value': 0 }
             currParams.push({ "var": var, "type": self.currType })
         return Tree('decl_var', args)      
     
@@ -143,14 +210,19 @@ class TransformerLark(Transformer):
         if var in self.functions[self.currFunction]['vars']:
             raise ValueError(var  + " already defined")
         else:
-            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType }
+            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType, 'value': 0 }
         return Tree('lista_var', args)
 
     def var(self, args):
         self.currVar = args[0]
-        stackVar.push(args[0].value)
+        stackVar.push(args[0])
         stackType.push(self.findbyType(args[0].value))
         return Tree('var', args)     
+
+    def string(self, args):
+        stackVar.push(args[0].value)
+        stackType.push("string")
+        return Tree('string', args) 
 
     def integer(self, args):
         stackVar.push(int(args[0].value))
@@ -187,11 +259,11 @@ class TransformerLark(Transformer):
         return Tree('op5', args)
 
     def while_key(self, args):
-        stackJumps.push(len(self.quadruples))
+        stackJumps.push(len(quadruples))
         return Tree('while_key', args)
 
     def for_key(self, args):
-        stackJumps.push(len(self.quadruples))
+        stackJumps.push(len(quadruples))
         return Tree('for_key', args)
 
     def return_str(self, args):
@@ -206,31 +278,18 @@ class TransformerLark(Transformer):
             if exp_type != "bool":
                 res = stackVar.pop()
                 quad = Quadruple("GotoF", res, None, None)
-                self.quadruples.append(quad.getQuad())
-                stackJumps.push(len(self.quadruples) - 1)
+                quadruples.append(quad.getQuad())
+                stackJumps.push(len(quadruples) - 1)
             else:
                 print("error end_exp_log")
         return Tree('end_exp_log', args)
 
     def fin_bloque(self, args):
-        if stackJumps.size() > 0:
-            end = stackJumps.pop()
-            if stackJumps.size() > 0:
-                ret = stackJumps.pop()
-                quad = Quadruple("Goto", None, None, ret)
-                self.quadruples.append(quad.getQuad()) 
-            self.quadruples[end][3] = len(self.quadruples)
+        genQuadGoto()
         return Tree('fin_bloque', args)
 
     def if_bloque(self, args):
-        if stackJumps.size() > 0:
-            end = stackJumps.pop()
-            if stackJumps.size() > 0:
-                ret = stackJumps.pop()
-                self.quadruples[ret][3] = len(self.quadruples)
-                quad = Quadruple("Goto", None, None, ret)
-                self.quadruples.append(quad.getQuad()) 
-            self.quadruples[end][3] = len(self.quadruples)
+        genQuadGoto()
         return Tree('if_bloque', args)       
 
     def if_key(self, args):
@@ -239,186 +298,82 @@ class TransformerLark(Transformer):
             if exp_type == "bool":
                 result = stackVar.pop()
                 quad = Quadruple("GotoF", result, None, None)
-                self.quadruples.append(quad.getQuad())
-                stackJumps.push(len(self.quadruples) - 1)
+                quadruples.append(quad.getQuad())
+                stackJumps.push(len(quadruples) - 1)
             else:
                 print("error if_key")
         return Tree('if_key', args)
 
     def else_key(self, args):
-        stackJumps.print()
         if stackJumps.size() > 0:
             end = stackJumps.pop()
             quad = Quadruple("Goto", None, None, None)
-            self.quadruples.append(quad.getQuad()) 
-            stackJumps.push(len(self.quadruples) - 1)
-            self.quadruples[end][3] = len(self.quadruples) + 2
+            quadruples.append(quad.getQuad()) 
+            stackJumps.push(len(quadruples) - 1)
+            quadruples[end][3] = len(quadruples)
         return Tree('else_key', args)
 
     def print_exp(self, args):
         stackOp.push("print")
+        stackType.push("print")
         return Tree('print_exp', args)
 
-    def end_print(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "print":
-                result = stackVar.pop()
-                operator = stackOp.pop()
-                quad = Quadruple(operator, None, None, result)
-                self.quadruples.append(quad.getQuad())     
+    def escritura_exp_comma(self, args):
+        stackOp.push("print")
+        stackType.push("print")
+        return Tree('print_exp', args)       
+
+    def escritura_exp(self, args):
+        genQuadEndExp(["print"])    
         return Tree('end_print', args)
 
     def exp_comp(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == ">" or top == "<" or top == "!=" or top == "==" or top == "<=" or top == ">=":
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_operand = stackVar.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                result_type = semTable.result(left_type, right_type, operator)
-                if result_type != False:
-                    result = ops[operator](left_operand, right_operand)
-                    quad = Quadruple(operator, left_operand, right_operand, result)
-                    self.quadruples.append(quad.getQuad())
-                    stackVar.push(result)
-                    stackType.push(result_type)
-                else:
-                    print("error exp_comp")
+        genQuadOpLog([">","<","!=","==","<=",">="])
         return Tree('exp_comp', args)
 
     def exp_log_or(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "OR":
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_operand = stackVar.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                result_type = semTable.result(left_type, right_type, operator)
-                if result_type != False:
-                    result = ops[operator](left_operand, right_operand)
-                    quad = Quadruple(operator, left_operand, right_operand, result)
-                    self.quadruples.append(quad.getQuad())
-                    stackVar.push(result)
-                    stackType.push(result_type)
-                else:
-                    print("error exp_log_or")
+        genQuadOpLog(["OR"])
         return ('exp_log_or', args)     
 
     def exp_log_and(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "AND":
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_operand = stackVar.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                result_type = semTable.result(left_type, right_type, operator)
-                if result_type != False:
-                    result = ops[operator](left_operand, right_operand)
-                    quad = Quadruple(operator, left_operand, right_operand, result)
-                    self.quadruples.append(quad.getQuad())
-                    stackVar.push(result)
-                    stackType.push(result_type)
-                else:
-                    print("error exp_log_and")
+        genQuadOpLog(["AND"])
         return ('exp_log_or', args)      
 
     def termino(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "+" or top == "-":
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_operand = stackVar.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                result_type = semTable.result(left_type, right_type, operator)
-                if result_type != False:
-                    if result_type == "int":
-                        left_typed = int(left_operand)
-                        right_typed = int(right_operand)
-                    elif result_type == "float":
-                        left_typed = float(left_operand)
-                        right_typed = float(right_operand)
-                    result = ops[operator](left_typed, right_typed)
-                    quad = Quadruple(operator, left_operand, right_operand, result)
-                    self.quadruples.append(quad.getQuad())
-                    stackVar.push(result)
-                    stackType.push(result_type)
-                else:
-                    print("error termino")
+        genQuadOpExp(['+','-'])
         return ('termino', args)
 
-
     def factor(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "*" or top == "/":
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_operand = stackVar.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                result_type = semTable.result(left_type, right_type, operator)
-                if result_type != False:
-                    if result_type == "int":
-                        left_typed = int(left_operand)
-                        right_typed = int(right_operand)
-                    elif result_type == "float":
-                        left_typed = float(left_operand)
-                        right_typed = float(right_operand)
-                    result = ops[operator](left_typed, right_typed)
-                    quad = Quadruple(operator, left_operand, right_operand, result)
-                    self.quadruples.append(quad.getQuad())
-                    stackVar.push(result)
-                    stackType.push(result_type)
-                else:
-                    print("error")
+        genQuadOpExp(["*","/"])
         return ('factor', args)
-           
 
     def ended(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "=":
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_operand = stackVar.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                result_type = semTable.result(left_type, right_type, operator)
-                if result_type != False:
-                    quad = Quadruple(operator, right_operand, None, left_operand)
-                    self.quadruples.append(quad.getQuad())
-                else:
-                    print("error")
+        genQuadEndExp(['='])
+        # TEMPORAL
 
     def return_exp(self, args):
-        if stackOp.size() > 0:
-            top = stackOp.peek()
-            if top == "return":
-                stackType.print()
-                right_operand = stackVar.pop()
-                right_type = stackType.pop()
-                left_type = stackType.pop()
-                operator = stackOp.pop()
-                if left_type == right_type:
-                    quad = Quadruple(operator, None, None, right_operand)
-                    self.quadruples.append(quad.getQuad())
-                else:
-                    print("error")       
+        genQuadEndExp(['return'])   
 
     def findbyType(self, var):
         if var in self.functions[self.currFunction]['vars']:
             return self.functions[self.currFunction]['vars'][var]['type'].value
         elif var in self.functions["___global___"]['vars']:
             return self.functions["___global___"]['vars'][var]['type'].value
+        return False
+
+    def findbyValue(self, var):
+        if var in self.functions[self.currFunction]['vars']:
+            return self.functions[self.currFunction]['vars'][var]['value']
+        elif var in self.functions["___global___"]['vars']:
+            return self.functions["___global___"]['vars'][var]['value']
+        return False
+
+    def setbyValue(self, var, value):
+        print(var, value)
+        if var in self.functions[self.currFunction]['vars']:
+            self.functions[self.currFunction]['vars'][var]['value'] = value
+        elif var in self.functions["___global___"]['vars']:
+            self.functions["___global___"]['vars'][var]['value'] = value
         return False
 
     def lparen(self, args):
@@ -430,4 +385,4 @@ class TransformerLark(Transformer):
         return Tree("rparen", args)
 
     def end_program(self, args):
-        prettyList(self.quadruples)
+        prettyList(quadruples)

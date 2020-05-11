@@ -1,13 +1,14 @@
 programa expresiones;
 var
-  int e, t;
+  int a, t;
   int matrix[10][10];
 
 funcion int fact(int j, int y)
 var int i;
+int b;
  {
   i = 10 + 10;
-  si ((5 < 10)) entonces {
+  si (5 < 10) entonces {
     b = 10;
   } 
 }
@@ -21,16 +22,16 @@ var int i;
 
 principal() {
   fact(5, 3);
-  a = 3;
   escribe(10 + 12);
-  si ((5 > 2)) entonces {
+  a = 3;
+  si (3 < 5) entonces {
     escribe(5 + 3);
   }
   sino {
     a = 2;
     b = 3;
   }
-  mientras ((10 > 20 && 12 < 30)) haz {
+  mientras (10 > 20 && 12 < 30) haz {
     escribe(10 + 30);
   }
   func(10, 15);

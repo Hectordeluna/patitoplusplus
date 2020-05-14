@@ -9,14 +9,14 @@ int b;
  {
   i = 10 + 10;
   si (5 < 10) entonces {
-    b = 10;
+    b = 10 + i;
   } 
 }
 
 funcion int func(int j, int y)
 var int i;
  {
-  i = 10 + 10;
+  i = 10 + j;
   regresa(10);
 }
 

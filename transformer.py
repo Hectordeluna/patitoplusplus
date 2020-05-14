@@ -53,7 +53,7 @@ def genQuadOpLog(cond):
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
                 # result = ops[operator](left_operand, right_operand)
-                posMemVirtual = memVirtual.getAddress('global', 'float') # falta cambiar a que sea segun el tipo
+                posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
                 quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
                 stackVar.push(posMemVirtual)
@@ -72,14 +72,8 @@ def genQuadOpExp(cond):
             operator = stackOp.pop()
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
-                if result_type == "int":
-                    left_typed = int(left_operand)
-                    right_typed = int(right_operand)
-                elif result_type == "float":
-                    left_typed = float(left_operand)
-                    right_typed = float(right_operand)
                 # result = ops[operator](left_typed, right_typed)
-                posMemVirtual = memVirtual.getAddress('global', 'float') # falta cambiar a que sea segun el tipo
+                posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
                 quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
                 stackVar.push(posMemVirtual)
@@ -147,7 +141,7 @@ class TransformerLark(Transformer):
     def args_func(self, args):
         if currParams.size() > 0:
             top = currParams.pop()
-            var = top["var"].value
+            var = top["var"]
             typ = top["type"].value
             self.functions[self.currFunction]['params'][self.currFuncCounter] = { 'var': var, 'type': typ }
             self.currFuncCounter = self.currFuncCounter + 1
@@ -203,27 +197,29 @@ class TransformerLark(Transformer):
         self.currType = defType[0]
         return Tree('tipo', defType)
 
-    def decl_var(self, args):
-        var = args[1]
+    def saveVar(self, var):
         if var in self.functions[self.currFunction]['vars']:
             raise ValueError(var  + " already defined")
         else:
-            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType, 'value': 0 }
+            if self.currFunction == "___global___":
+                scope = "global"
+            else:
+                scope = "local"
+            posMemVirtual = memVirtual.getAddress(scope, self.currType) # falta cambiar a que sea segun el tipo
+            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType, 'value': 0, 'dir': posMemVirtual }
             currParams.push({ "var": var, "type": self.currType })
+
+    def decl_var(self, args):
+        self.saveVar(args[1].value)
         return Tree('decl_var', args)      
     
     def lista_var(self, args):
-        var = args[0]
-
-        if var in self.functions[self.currFunction]['vars']:
-            raise ValueError(var  + " already defined")
-        else:
-            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType, 'value': 0 }
+        self.saveVar(args[0].value)
         return Tree('lista_var', args)
 
     def var(self, args):
         self.currVar = args[0]
-        stackVar.push(args[0])
+        stackVar.push(self.findbyMem(args[0].value))
         stackType.push(self.findbyType(args[0].value))
         return Tree('var', args)     
 
@@ -376,8 +372,14 @@ class TransformerLark(Transformer):
             return self.functions["___global___"]['vars'][var]['value']
         return False
 
+    def findbyMem(self, var):
+        if var in self.functions[self.currFunction]['vars']:
+            return self.functions[self.currFunction]['vars'][var]['dir']
+        elif var in self.functions["___global___"]['vars']:
+            return self.functions["___global___"]['vars'][var]['dir']
+        return False
+
     def setbyValue(self, var, value):
-        print(var, value)
         if var in self.functions[self.currFunction]['vars']:
             self.functions[self.currFunction]['vars'][var]['value'] = value
         elif var in self.functions["___global___"]['vars']:

@@ -45,6 +45,11 @@ class Semantic:
 				return "bool"
 			else:
 				return False
+		elif op == "AND" or op == "OR":
+			if left == "bool" and right == "bool":
+				return "bool"
+			else:
+				return False
 		elif op == "return":
 			return left == right
 		elif op == "print":

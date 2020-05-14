@@ -2,7 +2,9 @@ from lark import Transformer, Tree
 from Quadruple import *
 from Stack import *
 from Semantic import *
+from MemoriaVirtual import *
 
+memVirtual = MemoriaVirtual()
 stackOp = Stack(False)
 stackJumps = Stack(False)
 stackVar = Stack(False)
@@ -50,10 +52,11 @@ def genQuadOpLog(cond):
             operator = stackOp.pop()
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
-                result = ops[operator](left_operand, right_operand)
-                quad = Quadruple(operator, left_operand, right_operand, result)
+                # result = ops[operator](left_operand, right_operand)
+                posMemVirtual = memVirtual.getAddress('global', 'float') # falta cambiar a que sea segun el tipo
+                quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
-                stackVar.push(result)
+                stackVar.push(posMemVirtual)
                 stackType.push(result_type)
             else:
                 print("error exp_log_or")
@@ -75,10 +78,11 @@ def genQuadOpExp(cond):
                 elif result_type == "float":
                     left_typed = float(left_operand)
                     right_typed = float(right_operand)
-                result = ops[operator](left_typed, right_typed)
-                quad = Quadruple(operator, left_operand, right_operand, result)
+                # result = ops[operator](left_typed, right_typed)
+                posMemVirtual = memVirtual.getAddress('global', 'float') # falta cambiar a que sea segun el tipo
+                quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
-                stackVar.push(result)
+                stackVar.push(posMemVirtual)
                 stackType.push(result_type)
             else:
                 print("error termino")
@@ -90,13 +94,17 @@ def genQuadEndExp(cond):
             right_operand = stackVar.pop()
             right_type = stackType.pop()
             operator = stackOp.pop()
+            if stackVar.size() > 0:
+                left_operand = stackVar.pop()
+            else:
+                left_operand = None
             left_type = stackType.pop()
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
-                quad = Quadruple(operator, None, None, right_operand)
+                quad = Quadruple(operator, left_operand, None, right_operand)
                 quadruples.append(quad.getQuad())
             else:
-                print("error") 
+                print("error")
 
 def genQuadGoto(): 
     if stackJumps.size() > 0:

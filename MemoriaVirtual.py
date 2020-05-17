@@ -8,17 +8,15 @@ class MemoriaVirtual:
 			return self.memVirtual[indice][scope]
 
 class Memory:
-	def __init__(self):
+	def __init__(self, inicial):
 		self.arrInt = []
 		self.arrFloat = []
 		self.arrChar = []
 		self.arrBool = []
+		self.valInicial = inicial
 
 	def setVar(self, address, variable):
-		if address >= 4000 and address < 8000:
-			address = address - 4000
-		elif address >= 8000 and address < 12000:
-			address = address - 8000
+		address = address - self.valInicial
 
 		if address < 1000:
 			self.arrInt.append(variable)
@@ -30,10 +28,7 @@ class Memory:
 			self.arrBool.append(variable)
 
 	def getVar(self, address):
-		if address >= 4000 and address < 8000:
-			address = address - 4000
-		elif address >= 8000 and address < 12000:
-			address = address - 8000
+		address = address - self.valInicial
 		
 		if address < 1000:
 			return self.arrInt[address]
@@ -43,3 +38,5 @@ class Memory:
 			return self.arrChar[address - 2000]
 		elif address >= 3000:
 			return self.arrBool[address - 3000]
+		else:
+			return False

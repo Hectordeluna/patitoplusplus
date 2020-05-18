@@ -122,6 +122,7 @@ class TransformerLark(Transformer):
     def program_id(self, args):
         self.currFunction = "___global___"
         self.functions["___global___"] = { 'type': 'VOID', 'vars': {} }
+        self.functions["___cte___"] = { 'type': 'VOID', 'vars': {} }
         return Tree('program', args)
 
     def func_name(self, args):
@@ -224,17 +225,29 @@ class TransformerLark(Transformer):
         return Tree('var', args)     
 
     def string(self, args):
-        stackVar.push(args[0].value)
+        dirCte = self.findbyMemCte(args[0].value)
+        if dirCte == False:
+            dirCte = memVirtual.getAddress('cte', 'string')
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "string", 'value': args[0].value, 'dir': dirCte }
+        stackVar.push(dirCte)
         stackType.push("string")
         return Tree('string', args) 
 
     def integer(self, args):
-        stackVar.push(int(args[0].value))
+        dirCte = self.findbyMemCte(args[0].value)
+        if dirCte == False:
+            dirCte = memVirtual.getAddress('cte', 'int')
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "int", 'value': args[0].value, 'dir': dirCte }
+        stackVar.push(dirCte)       
         stackType.push('int')
         return Tree('integer', args)  
 
     def number(self, args):
-        stackVar.push(int(args[0].value))
+        dirCte = self.findbyMemCte(args[0].value)
+        if dirCte == False:
+            dirCte = memVirtual.getAddress('cte', 'int')
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "int", 'value': args[0].value, 'dir': dirCte }
+        stackVar.push(dirCte)
         stackType.push('int')
         return Tree('integer', args) 
 
@@ -379,6 +392,11 @@ class TransformerLark(Transformer):
             return self.functions["___global___"]['vars'][var]['dir']
         return False
 
+    def findbyMemCte(self, var):
+        if var in self.functions['___cte___']['vars']:
+            return self.functions['___cte___']['vars'][var]['dir']
+        return False
+
     def setbyValue(self, var, value):
         if var in self.functions[self.currFunction]['vars']:
             self.functions[self.currFunction]['vars'][var]['value'] = value
@@ -394,5 +412,6 @@ class TransformerLark(Transformer):
         stackOp.pop()
         return Tree("rparen", args)
 
-    def end_program(self, args):
+    def program(self, args):
         prettyList(quadruples)
+        return Tree("program",args)

@@ -7,7 +7,8 @@ funcion int fact(int j, int y)
 var int i;
 int b;
  {
-  i = 10 + 10;
+  i = 10 + 10 + j;
+  i = "gang" - "hola";
   si (5 < 10) entonces {
     b = 10 + i;
   } 
@@ -36,4 +37,3 @@ principal() {
   }
   func(10, 15);
 }
-ended

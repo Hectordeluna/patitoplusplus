@@ -12,6 +12,8 @@ class Semantic:
 				return "int"
 			elif left == "float" and right == "float":
 				return "float"
+			elif left == "string" and right == "string":
+				return "string"
 			else:
 				return False
 		elif op == "*":

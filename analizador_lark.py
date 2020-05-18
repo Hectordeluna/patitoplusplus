@@ -13,8 +13,7 @@ calc_grammar = r"""
     | bloque
     exec_func: func
     func_bloque : bloque
-    main_func : MAIN LPAREN RPAREN bloque end_program
-    end_program: "ended"
+    main_func : MAIN LPAREN RPAREN bloque
 
     var : ID arrm? arrm? "$"?
     decl_var : tipo ID arrm? arrm? "$"?

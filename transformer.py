@@ -3,11 +3,12 @@ from Quadruple import *
 from Stack import *
 from Semantic import *
 from MemoriaVirtual import *
-
+from virtualMachine import *
 memVirtual = MemoriaVirtual()
 stackOp = Stack(False)
 stackJumps = Stack(False)
 stackVar = Stack(False)
+stackDim = Stack(False)
 stackType = Stack(False)
 semTable = Semantic()
 currParams = Stack(False)
@@ -88,27 +89,34 @@ def genQuadEndExp(cond):
             right_operand = stackVar.pop()
             right_type = stackType.pop()
             operator = stackOp.pop()
+            
             if stackVar.size() > 0:
                 left_operand = stackVar.pop()
+                left_type = stackType.pop()
+                result_type = semTable.result(left_type, right_type, operator)
             else:
                 left_operand = None
-            left_type = stackType.pop()
-            result_type = semTable.result(left_type, right_type, operator)
+                result_type = True
             if result_type != False:
                 quad = Quadruple(operator, left_operand, None, right_operand)
                 quadruples.append(quad.getQuad())
             else:
                 print("error")
+        else:
+            print("ERROR QUAD END EXP 1 ")
+    else:
+        print("ERROR QUAD END EXP 2 ")
 
 def genQuadGoto(): 
     if stackJumps.size() > 0:
         end = stackJumps.pop()
         if stackJumps.size() > 0:
             ret = stackJumps.pop()
-            quadruples[ret][3] = len(quadruples)
             quad = Quadruple("Goto", None, None, ret)
             quadruples.append(quad.getQuad()) 
         quadruples[end][3] = len(quadruples)
+    else:
+        print("ERROR QUADGOTO")
 
 class TransformerLark(Transformer):
 
@@ -117,13 +125,23 @@ class TransformerLark(Transformer):
         self.currType = ""
         self.currFunction = "___global___"
         self.currVar = ""
+        self.currArr = ""
         self.currFuncCounter = 0
+        self.dim = 1
+        self.R = 0
+        self.currNodes = []
+        self.forloopvar = 0
 
     def program_id(self, args):
         self.currFunction = "___global___"
         self.functions["___global___"] = { 'type': 'VOID', 'vars': {} }
         self.functions["___cte___"] = { 'type': 'VOID', 'vars': {} }
+        quad = Quadruple("Goto", None, None, None)
+        quadruples.append(quad.getQuad())
         return Tree('program', args)
+    
+    def main(self, args):
+        quadruples[0][3] = len(quadruples)
 
     def func_name(self, args):
         self.currFunction = args[0].value
@@ -133,6 +151,8 @@ class TransformerLark(Transformer):
           raise ValueError(args[0] + " already defined")
         else:
           self.functions[args[0]] = { 'type': self.currType, 'vars': {}, 'params': {} }
+          if self.currType != "void":
+                self.saveVar(args[0], "___global___")
         return Tree('func_name', args)
 
     def end_func_decl(self, args):
@@ -143,7 +163,7 @@ class TransformerLark(Transformer):
         if currParams.size() > 0:
             top = currParams.pop()
             var = top["var"]
-            typ = top["type"].value
+            typ = top["type"]
             self.functions[self.currFunction]['params'][self.currFuncCounter] = { 'var': var, 'type': typ }
             self.currFuncCounter = self.currFuncCounter + 1
 
@@ -162,6 +182,7 @@ class TransformerLark(Transformer):
     def call_name(self, args):
         if args[0].value not in self.functions:
             print("ERROR func not found")
+        self.currFunction = args[0].value
         return Tree('call_name', args)  
 
     def gen_era(self, args):
@@ -176,7 +197,7 @@ class TransformerLark(Transformer):
             typ = stackType.pop()
             param = self.functions[self.currFunction]['params'][self.currFuncCounter]
             if param["type"] == typ:
-                quad = Quadruple("PARAMETER", argument, self.currFuncCounter + 1, None) 
+                quad = Quadruple("PARAMETER", argument, None, self.currFuncCounter + 1) 
                 self.currFuncCounter = self.currFuncCounter + 1
                 quadruples.append(quad.getQuad())
             else:
@@ -187,8 +208,14 @@ class TransformerLark(Transformer):
         if self.currFuncCounter < len(self.functions[self.currFunction]['params']):
             print("error not enough parameters")
         else:
-            quad = Quadruple("GOSUB", self.currFunction, None, self.functions[self.currFunction]['quad_count']) 
+            quad = Quadruple("GOSUB", None, None, self.currFunction) 
             quadruples.append(quad.getQuad())
+            if self.functions[self.currFunction]['type'] != "void":
+                stackVar.push(self.functions["___global___"]["vars"][self.currFunction]["dir"])
+                stackType.push(self.functions["___global___"]["vars"][self.currFunction]["type"])
+
+    def semi_call(self, args):
+        print("e")
 
     def return_val(self, args):
         self.currType = args[0].value
@@ -198,44 +225,148 @@ class TransformerLark(Transformer):
         self.currType = defType[0]
         return Tree('tipo', defType)
 
-    def saveVar(self, var):
-        if var in self.functions[self.currFunction]['vars']:
+    def saveVar(self, var, scope = ""):
+        if scope == "":
+            scope = self.currFunction
+        if var in self.functions[scope]['vars']:
             raise ValueError(var  + " already defined")
         else:
-            if self.currFunction == "___global___":
-                scope = "global"
+            if scope == "___global___":
+                scopeMem = "global"
             else:
-                scope = "local"
-            posMemVirtual = memVirtual.getAddress(scope, self.currType) # falta cambiar a que sea segun el tipo
-            self.functions[self.currFunction]['vars'][var] = { 'type': self.currType, 'value': 0, 'dir': posMemVirtual }
-            currParams.push({ "var": var, "type": self.currType })
-
-    def decl_var(self, args):
-        self.saveVar(args[1].value)
-        return Tree('decl_var', args)      
+                scopeMem = "local"
+            posMemVirtual = memVirtual.getAddress(scopeMem, self.currType) # falta cambiar a que sea segun el tipo
+            self.functions[scope]['vars'][var] = { 'type': self.currType, 'value': 0, 'dir': posMemVirtual, 'dim': 0, 'arrList': [] }
+            currParams.push({ "var": var, "type": self.currType })   
     
     def lista_var(self, args):
         self.saveVar(args[0].value)
         return Tree('lista_var', args)
 
-    def var(self, args):
-        self.currVar = args[0]
-        stackVar.push(self.findbyMem(args[0].value))
-        stackType.push(self.findbyType(args[0].value))
-        return Tree('var', args)     
+    # ARRAYS
+    def id(self, args):
+        exists = self.findbyMem(args[0].value)
+        if exists > -1:
+            stackVar.push(exists)
+            stackType.push(self.findbyType(args[0]))
+        else:    
+            self.saveVar(args[0].value)
+        self.currVar = args[0].value
+        if len(self.getArray(self.currVar)) > 0:
+            self.currArr = self.currVar
+        return Tree('id',args) 
+
+    def lbrake(self, args):
+        if stackVar.size() > 0 and stackOp.peek() != "[":
+            var = stackVar.pop()
+            if len(self.getArray(self.currArr)) > 0:
+                self.dim = 1
+                stackDim.push({ 'var': var, 'dim' : 1 })
+                self.currNodes = self.getArray(self.currArr).copy()
+                stackOp.push("[")
+            return Tree('lbrake', args)
+        if self.R > 1:
+            self.dim = self.dim + 1
+        if stackOp.peek() != "[":
+            self.dim = 1
+            self.R = 1
+            self.getArray(self.currVar).append([0,0])
+        return Tree('lbrake', args) 
+    
+    def size(self, args):
+        self.R = int(args[0].value) * self.R
+        sze = len(self.getArray(self.currVar))
+        self.getArray(self.currVar)[sze - 1][0] = int(args[0].value)
+        return Tree('size', args)
+    
+    def arrexpsize(self, args):
+        if stackOp.size() > 0:
+            top = stackOp.peek()
+            if top in ["["]:
+                dimension = self.currNodes[0]
+                var = stackVar.peek()
+                cteDirZero = self.insertToCte(-1)
+                cteDirDim = self.insertToCte(dimension[0])
+                quad = Quadruple("Ver", var, cteDirZero, cteDirDim)
+                quadruples.append(quad.getQuad())
+                if len(self.currNodes) > 1:
+                    aux = stackVar.pop()
+                    posMemVirtual = memVirtual.getAddress('temp', "int")
+                    quad = Quadruple("*", aux, cteDirDim, posMemVirtual)
+                    quadruples.append(quad.getQuad())
+                    stackVar.push(posMemVirtual)
+                print(self.dim)
+                if self.dim > 1:
+                    aux2 = stackVar.pop()
+                    aux1 = stackVar.pop()
+                    posMemVirtual = memVirtual.getAddress('temp', "int")
+                    quad = Quadruple("+", aux1, aux2, posMemVirtual)
+                    quadruples.append(quad.getQuad())
+                    stackVar.push(posMemVirtual)
+            return Tree('arrexpsize', args)
+
+    def arrmexp(self, args):
+        self.dim = self.dim + 1
+        currDim = stackDim.pop()
+        currDim['dim'] = self.dim
+        stackDim.push(currDim)
+        if len(self.currNodes) > 0:
+            self.currNodes.pop(0) 
+        return Tree('arrmexp', args)
+
+    def arr(self, args):
+        if stackVar.size() > 0:
+            aux1 = stackVar.pop()
+            posMemVirtual2 = memVirtual.getAddress('temp', "int")
+            posMemVirtual3 = self.findbyMem(self.currArr)
+            quad = Quadruple("+", aux1, posMemVirtual3, posMemVirtual2)
+            stackVar.push(posMemVirtual2)
+            quadruples.append(quad.getQuad())
+            stackOp.pop()
+            self.dim = 1
+            
+    def decl_var(self, args):
+        dimTmp = 0
+        offset = 0
+        sze = self.R
+        last = len(self.getArray(self.currVar))
+
+        if last == 0:
+            return Tree('decl_var', args)
+
+        posMemVirtual = memVirtual.getAddress("pointer", self.currType)
+        memVirtual.setNextAddress("pointer", self.currType, self.R)
+        self.functions[self.currFunction]['vars'][self.currVar]["dir"] = posMemVirtual
+        for node in self.getArray(self.currVar):
+            mDim = self.R / node[0]
+            self.R = mDim
+            node[1] = mDim
+            offset = offset + mDim
+        K = offset
+        self.getArray(self.currVar)[last - 1][1] = -K
+        self.dim = 1
+        self.R = 0
 
     def string(self, args):
         dirCte = self.findbyMemCte(args[0].value)
-        if dirCte == False:
+        if dirCte == -1:
             dirCte = memVirtual.getAddress('cte', 'string')
-            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "string", 'value': args[0].value, 'dir': dirCte }
+            slicedString = args[0].value[1:len(args[0].value) - 1]
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "string", 'value': slicedString, 'dir': dirCte }
         stackVar.push(dirCte)
         stackType.push("string")
         return Tree('string', args) 
 
+    def insertToCte(self, value):
+        dirCte = self.findbyMemCte(value)
+        if dirCte == -1:
+            dirCte = memVirtual.getAddress('cte', 'int')
+            self.functions["___cte___"]['vars'][value] = { 'type': "int", 'value': value, 'dir': dirCte }
+        return dirCte
+
     def integer(self, args):
         dirCte = self.findbyMemCte(args[0].value)
-        if dirCte == False:
+        if dirCte == -1:
             dirCte = memVirtual.getAddress('cte', 'int')
             self.functions["___cte___"]['vars'][args[0].value] = { 'type': "int", 'value': args[0].value, 'dir': dirCte }
         stackVar.push(dirCte)       
@@ -244,12 +375,21 @@ class TransformerLark(Transformer):
 
     def number(self, args):
         dirCte = self.findbyMemCte(args[0].value)
-        if dirCte == False:
-            dirCte = memVirtual.getAddress('cte', 'int')
-            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "int", 'value': args[0].value, 'dir': dirCte }
+        if dirCte == -1:
+            dirCte = memVirtual.getAddress('cte', 'float')
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "float", 'value': args[0].value, 'dir': dirCte }
         stackVar.push(dirCte)
-        stackType.push('int')
-        return Tree('integer', args) 
+        stackType.push('float')
+        return Tree('number', args) 
+    
+    def boolean(self, args):
+        dirCte = self.findbyMemCte(args[0].value)
+        if dirCte == -1:
+            dirCte = memVirtual.getAddress('cte', 'bool')
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "bool", 'value': args[0].value, 'dir': dirCte }
+        stackVar.push(dirCte)
+        stackType.push('bool')     
+        return Tree('bool', args) 
 
     def times_divide(self, args):
         stackOp.push(args[0].value)
@@ -279,9 +419,9 @@ class TransformerLark(Transformer):
         stackJumps.push(len(quadruples))
         return Tree('while_key', args)
 
-    def for_key(self, args):
+    def to(self, args):
         stackJumps.push(len(quadruples))
-        return Tree('for_key', args)
+        return Tree('to', args)
 
     def return_str(self, args):
         stackOp.push('return')
@@ -292,7 +432,7 @@ class TransformerLark(Transformer):
     def end_exp_log(self, args):
         if stackType.size() > 0:
             exp_type = stackType.pop()
-            if exp_type != "bool":
+            if exp_type == "bool":
                 res = stackVar.pop()
                 quad = Quadruple("GotoF", res, None, None)
                 quadruples.append(quad.getQuad())
@@ -304,6 +444,23 @@ class TransformerLark(Transformer):
     def fin_bloque(self, args):
         genQuadGoto()
         return Tree('fin_bloque', args)
+    
+    def fin_for_loop(self, args):
+        aux = self.forloopvar
+        posMemVirtual = memVirtual.getAddress('temp', "int")
+        numone = self.insertToCte(1)
+        quad = Quadruple("+", aux, numone, posMemVirtual)
+        quadruples.append(quad.getQuad())
+        quad = Quadruple("=", aux, None, posMemVirtual)
+        quadruples.append(quad.getQuad())
+        genQuadGoto()
+        return Tree('fin_for_loop', args)
+
+    def exp_end_for(self, args):
+        quadsze = len(quadruples)
+        currVar = quadruples[quadsze - 1][1]
+        self.forloopvar = currVar
+        return Tree('exp_end_for', args)
 
     def if_bloque(self, args):
         genQuadGoto()
@@ -335,14 +492,28 @@ class TransformerLark(Transformer):
         stackType.push("print")
         return Tree('print_exp', args)
 
-    def escritura_exp_comma(self, args):
+    def read_emp(self, args):
+        stackOp.push("read")
+        stackType.push("read")
+        return Tree("read_emp", args)
+
+    def comma_read(self, args):
+        stackOp.push("read")
+        stackType.push("read")
+        return Tree("comma_read", args)
+
+    def comma(self, args):
         stackOp.push("print")
         stackType.push("print")
-        return Tree('print_exp', args)       
+        return Tree('comma', args)       
 
-    def escritura_exp(self, args):
+    def print_exp_fin(self, args):
         genQuadEndExp(["print"])    
-        return Tree('end_print', args)
+        return Tree('print_exp_fin', args)
+
+    def id_finished(self, args):
+        genQuadEndExp(['read'])
+        return Tree('id_read', args)
 
     def exp_comp(self, args):
         genQuadOpLog([">","<","!=","==","<=",">="])
@@ -364,7 +535,7 @@ class TransformerLark(Transformer):
         genQuadOpExp(["*","/"])
         return ('factor', args)
 
-    def ended(self, args):
+    def assign_var(self, args):
         genQuadEndExp(['='])
         # TEMPORAL
 
@@ -390,12 +561,19 @@ class TransformerLark(Transformer):
             return self.functions[self.currFunction]['vars'][var]['dir']
         elif var in self.functions["___global___"]['vars']:
             return self.functions["___global___"]['vars'][var]['dir']
-        return False
+        return -1
+
+    def getArray(self, var):
+        if var in self.functions[self.currFunction]['vars']:
+            return self.functions[self.currFunction]['vars'][var]['arrList']
+        elif var in self.functions["___global___"]['vars']:
+            return self.functions["___global___"]['vars'][var]['arrList']
+        return []
 
     def findbyMemCte(self, var):
         if var in self.functions['___cte___']['vars']:
             return self.functions['___cte___']['vars'][var]['dir']
-        return False
+        return -1
 
     def setbyValue(self, var, value):
         if var in self.functions[self.currFunction]['vars']:
@@ -412,6 +590,8 @@ class TransformerLark(Transformer):
         stackOp.pop()
         return Tree("rparen", args)
 
-    def program(self, args):
+    def program(self    , args):
         prettyList(quadruples)
+        runMachine(quadruples, self.functions)
+        #pretty(self.functions)
         return Tree("program",args)

@@ -13,22 +13,31 @@ calc_grammar = r"""
     | bloque
     exec_func: func
     func_bloque : bloque
-    main_func : MAIN LPAREN RPAREN bloque
-
-    var : ID arrm? arrm? "$"?
-    decl_var : tipo ID arrm? arrm? "$"?
+    main_func : main LPAREN RPAREN bloque
+    main: MAIN
+    var : id arr?
+    arr: arrmexp arrmexp? "$"?
+    decl_var : tipo id arrm? arrm? "$"?
+    id: ID
     var_id : decl_var lista_var? SEMI var_id?
     lista_var : "," ID arrm? arrm? "$"? lista_var?
     vars : VAR var_id
 
-    arrm : LBRAKE (INTEGER | ID) RBRAKE
+    arrm : lbrake size rbrake
+    arrmexp : lbrake arrexpsize RBRAKE
+    arrexpsize : exp
+    lbrake: LBRAKE
+    rbrake: RBRAKE
+    size: INTEGER | NUMBER
 
     tipo : INT 
     | FLOAT 
+    | LETRAS
 
     return_val: VOID
     | INT
     | FLOAT 
+    | LETRAS
 
     args_func : decl_var
     func : FUNCTION return_val func_name LPAREN args_func? ("," args_func)* end_func_decl func_vars?
@@ -38,10 +47,6 @@ calc_grammar = r"""
 
     bloque : LBRACE estatuto* RBRACE
 
-    read: read_emp LPAREN ID RPAREN read_end
-    read_emp : READ
-    read_end : SEMI
-
     estatuto : asignacion 
     | condicion 
     | escritura
@@ -49,17 +54,27 @@ calc_grammar = r"""
     | return
     | read
     | for_loop
-    | call SEMI
+    | call semi_call
+    semi_call: SEMI
 
-    asignacion : var assign exp ended -> assign_var
+    asignacion : var assign exp ended? -> assign_var 
     ended: SEMI
 
+    read: read_emp LPAREN id_read RPAREN read_end
+    id_read: id_finished read_comma?
+    id_finished: id
+    read_comma: comma_read id_read
+    comma_read: ","
+    read_emp : READ
+    read_end : SEMI
 
     escritura : print_exp LPAREN escritura_exp RPAREN end_print
     end_print : SEMI
     print_exp : PRINT
-    escritura_exp: exp escritura_exp_comma?
-    escritura_exp_comma: "," escritura_exp
+    escritura_exp: print_exp_fin escritura_exp_comma?
+    print_exp_fin: exp
+    escritura_exp_comma: comma escritura_exp
+    comma: ","
 
     return: return_str LPAREN return_exp RPAREN SEMI
     return_str: RETURN
@@ -71,12 +86,15 @@ calc_grammar = r"""
     else: else_key bloque
     else_key: ELSE
 
-    while: while_key exp DO fin_bloque 
+    while: while_key exp end_exp_log fin_bloque 
     fin_bloque: bloque
     end_exp_log: DO
     while_key: WHILE
 
-    for_loop: for_key var assign exp TO exp DO (bloque | estatuto)
+    for_loop: for_key LPAREN asignacion exp_end_for to exp end_exp_log fin_for_loop
+    exp_end_for: RPAREN
+    fin_for_loop: bloque
+    to: TO
     for_key: FROM
 
     exp : termino op1?
@@ -89,16 +107,18 @@ calc_grammar = r"""
 
     times_divide: TIMES_DIVIDE
 
-    factor : var
+    factor : boolean
+            | var
             | call
             | number
             | string
+            | integer
             | PLUS var_cte 
             | MINUS var_cte 
             | LPAREN exp_log_or RPAREN
 
     string: STRING
-
+    boolean: BOOLEAN
     call: call_name gen_era call_args? call_end
     call_end: RPAREN
     gen_era: LPAREN
@@ -121,8 +141,8 @@ calc_grammar = r"""
     op3: OR exp_log_or
     exp_log_and: exp_comp op4?
     op4: AND exp_log_and
-    exp_comp: exp op5 exp
-    | exp
+    exp_comp: log_exp_comp | exp
+    log_exp_comp: exp op5 exp
     op5 : GREATER ASSIGN
     | LESS ASSIGN 
     | LESS 
@@ -143,18 +163,21 @@ calc_grammar = r"""
     VAR: "var"
     FLOAT: "float"
     INT: "int"
+    LETRAS: "string"
+    BOOL: "bool"
     FUNCTION: "funcion"
     RETURN: "regresa"
     WHILE: "mientras"
-    DO: "haz" | "hacer"
+    DO.10: "haz" | "hacer"
     MAIN: "principal"
     READ: "lee"
     FROM: "desde"
     TO: "hasta"
     VOID: "void"
 
+    BOOLEAN.10: "True" | "False"
     ID : WORD
-    NUMBER : /[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/
+    NUMBER : /[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?/
     PLUS: "+"
     TIMES_DIVIDE: "*" | "/"
     PLUS_MINUS: "+" | "-"

@@ -20,7 +20,9 @@ class Stack:
 	def peek(self):
 		if self.toPrint:
 			print("Peek", self.items)
-		return self.items[0]
+		if self.size() > 0:
+			return self.items[0]
+		return None
 
 	def size(self):
 	    return len(self.items)	

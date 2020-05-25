@@ -1,39 +1,33 @@
 programa expresiones;
 var
-  int a, t;
-  int matrix[10][10];
+  int i, j, p;
+  int Arreglo[10];
+  int Matriz[10][8];
+  int T;
 
-funcion int fact(int j, int y)
-var int i;
-int b;
- {
-  i = 10 + 10 + j;
-  i = "gang" - "hola";
-  si (5 < 10) entonces {
-    b = 10 + i;
-  } 
+funcion int fact (int j)
+var int i; {
+  i = j + (p - j * 2 + j);
+  si (j == 0.3) entonces {
+    regresa(j);
+  } sino {
+    regresa (j * fact(j - 1));
+  }
 }
 
-funcion int func(int j, int y)
-var int i;
- {
-  i = 10 + j;
-  regresa(10);
+funcion void inicia (int y)
+var int x;
+int t; {
+  x = -1;
+  mientras (x < 11) haz {
+    Arreglo[x] = y * x;
+  }
 }
 
 principal() {
-  fact(5, 3);
-  escribe(10 + 12);
-  a = 3;
-  si (3 < 5) entonces {
-    escribe(5 + 3);
+  Arreglo[0] = 1;
+  escribe(Arreglo + Arreglo);
+  desde (Arreglo[0] = 0) hasta (Arreglo[0] < 10) hacer {
+    escribe(Arreglo[0]);
   }
-  sino {
-    a = 2;
-    b = 3;
-  }
-  mientras (10 > 20 && 12 < 30) haz {
-    escribe(10 + 30);
-  }
-  func(10, 15);
 }

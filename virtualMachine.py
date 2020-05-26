@@ -1,10 +1,13 @@
 from MemoriaVirtual import *
+from Stack import *
 
-localMem = Memory(4000)
 globalMem = Memory(0)
+localMem = Memory(4000)
 tmpMem = Memory(8000)
 cteMem = Memory(12000)
 pointMem = Memory(16000)
+funcNames = Stack(False)
+quadPos = Stack(False)
 
 ops = {
     "+": (lambda a,b: a+b), 
@@ -159,3 +162,36 @@ def runMachine(quadruples, functions):
 
     if op == "SIZE":
       currentArraySize = resDir
+
+    if op == "ERA":
+      funcNames.push(leftDir)
+
+    if op == "VER":
+      target = getVarValue(leftDir)
+      limInf = getVarValue(rightDir)
+      limSup = getVarValue(resDir)
+
+      if target < limInf or target > limSup:
+        print("Error en rango de indice")
+        break
+
+    if op == "GOSUB":
+      quadPos.push(i)
+      i = functions[funcNames.peek()]['quad_count'] - 1
+      
+    if op == "read":
+      value = input()
+      setVarValue(resDir, value)
+
+    if op == "PARAMETER":
+      param = getVarValue(leftDir)
+      nameVar = functions[funcNames.peek()]['params'][resDir-1]['var']
+      dirVar = functions[funcNames.peek()]['vars'][nameVar]['dir']
+      setVarValue(dirVar, param)
+
+    if op == "ENDFunc":
+      i = quadPos.pop() + 1
+      funcNames.pop()
+
+    if op == "return":
+      functions['__global__']['vars'][funcNames.peek()]['dir'] = resDir

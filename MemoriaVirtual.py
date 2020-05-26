@@ -56,3 +56,9 @@ class Memory:
 
 	def printBool(self):
 		print(self.arrBool)
+
+	def clearMemory(self):
+		self.arrInt = {}
+		self.arrFloat = {}
+		self.arrChar = {}
+		self.arrBool = {}

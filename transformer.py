@@ -228,13 +228,12 @@ class TransformerLark(Transformer):
             self.currFuncCounter = self.currFuncCounter + 1
 
     def func_bloque(self, args):
-        self.functions[self.currFunction]['vars'] = {}
         quad = Quadruple("ENDFunc", None, None, None)
         quadruples.append(quad.getQuad())
         # Falta el numbero de Ts usadas
         
 
-    def func_vars(self, args):
+    def func(self, args):
         self.functions[self.currFunction]['local_size'] = abs(len(self.functions[self.currFunction]['vars']) - self.functions[self.currFunction]['params_size'])
         self.functions[self.currFunction]['quad_count'] = len(quadruples)
         return Tree('end_func_decl', args)     

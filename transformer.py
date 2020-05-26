@@ -104,7 +104,10 @@ def genQuadOpExp(cond):
                         while (index < len(leftArr['arrList'])):
                             sze = sze * leftArr['arrList'][index][0]                        
                             index = index + 1
-                    quad = Quadruple("SIZE", None, None, sze)
+                    dimtwo = None
+                    if len(leftArr['arrList']) > 1:
+                        dimtwo = leftArr['arrList'][1][0]
+                    quad = Quadruple("SIZE", leftArr['arrList'][0][0], dimtwo, sze)
                     quadruples.append(quad.getQuad())
                     stackArrs.push({ 'dir': posMemVirtual, 'arrList': leftArr['arrList'] })
                     posMemVirtual = memVirtual.getAddress('pointer', result_type)
@@ -150,12 +153,16 @@ def genQuadEndExp(cond):
                             sze = sze * leftArr['arrList'][index][0]
                             index = index + 1
                             operator = operator + operator[0]  
+                        operator = operator + "M"
                     else:
                         index = 0
                         while (index < len(leftArr['arrList'])):
                             sze = sze * leftArr['arrList'][index][0]
                             index = index + 1
-                    quad = Quadruple("SIZE", None, None, sze)
+                    dimtwo = None
+                    if len(leftArr['arrList']) > 1:
+                        dimtwo = leftArr['arrList'][1][0]
+                    quad = Quadruple("SIZE", leftArr['arrList'][0][0], dimtwo, sze)
                     quadruples.append(quad.getQuad())
                 quad = Quadruple(operator, left_operand, None, right_operand)
                 quadruples.append(quad.getQuad())

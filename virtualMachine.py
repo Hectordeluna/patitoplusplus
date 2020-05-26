@@ -125,7 +125,7 @@ def runMachine(quadruples, functions):
         val = getVarValue(val)
       print(val)
 
-    if op in ["+++","---","***","///"]:
+    if op in ["+++","---","***","///","++"]:
       size = currentArraySize
       leftPointer = leftDir
       rightPointer = rightDir
@@ -143,7 +143,7 @@ def runMachine(quadruples, functions):
           rightPointer = rightPointer + 1
           resultPointer = resultPointer + 1
     
-    if op == "===":
+    if op in ["===M","==M"]:
       size = currentArraySize
       leftPointer = leftDir
       resultPointer = resDir 
@@ -151,7 +151,6 @@ def runMachine(quadruples, functions):
 
       while index < size:
           resultPointerValue = getVarValue(resultPointer)
-
           setVarValue(leftPointer, resultPointerValue)
           index = index + 1
           leftPointer = leftPointer + 1

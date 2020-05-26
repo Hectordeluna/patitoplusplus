@@ -8,6 +8,7 @@ int B[10][10];
 funcion void inicia(int z)
 var
 int h, i;
+int B[10];
 {
   i = 5;
   mientras (i > 0) haz{
@@ -16,17 +17,6 @@ int h, i;
     i = i-1;
   }
 }
-
-funcion int fibo(int x)
-{
-  si (x == 1 || x == 0) entonces{
-    regresa(x);
-  }
-  sino{
-    regresa(fibo(x-1) + fibo(x-2));
-  }
-}
-
 
 principal()
 {
@@ -38,8 +28,10 @@ principal()
       B[i][j] = 4;
       j = j + 1;
     }
-    i = i + 1;
+    i = i + 1;  
   }
   B = A + B * B;
+  escribe(B);
+  x = fibo(10);
   i = 0;
 }

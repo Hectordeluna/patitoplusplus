@@ -252,7 +252,7 @@ class TransformerLark(Transformer):
         return Tree('call_name', args)  
 
     def gen_era(self, args):
-        quad = Quadruple("ERA", self.functions[self.currFunction]['params_size'], None, None)
+        quad = Quadruple("ERA", self.currFunction, None, None)
         quadruples.append(quad.getQuad())
         self.currFuncCounter = 0
         return Tree('gen_era', args)

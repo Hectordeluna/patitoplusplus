@@ -64,6 +64,8 @@ def runMachine(quadruples, functions):
     globalMem.setVar(functions["___global___"]["vars"][currVar]["dir"],functions["___global___"]["vars"][currVar]["value"])
 
   i = -1
+  currentArraySize = 0
+
   while i < len(quadruples):
     i = i + 1
     if i >= len(quadruples):
@@ -106,8 +108,54 @@ def runMachine(quadruples, functions):
         i = resDir - 1
 
     if op == "print":
+      if resDir > 15999:
+        size = currentArraySize
+        resultPointer = resDir
+
+        index = 0  
+
+        while index < size:
+            resultResPointer = getVarValue(resultPointer)
+            print(resultResPointer)
+            index = index + 1
+            resultPointer = resultPointer + 1
+        return
       val = getVarValue(resDir)
-      if val > 15999:
+      if isinstance(val, int) and val > 15999:
         val = getVarValue(val)
       print(val)
 
+    if op in ["+++","---","***","///"]:
+      size = currentArraySize
+      leftPointer = leftDir
+      rightPointer = rightDir
+      resultPointer = resDir
+
+      index = 0  
+
+      while index < size:
+          leftPointerValue = getVarValue(leftPointer)
+          rightPointerValue = getVarValue(rightPointer)
+          res = ops[op[0]](leftPointerValue, rightPointerValue)
+          setVarValue(resultPointer, res)
+          index = index + 1
+          leftPointer = leftPointer + 1
+          rightPointer = rightPointer + 1
+          resultPointer = resultPointer + 1
+    
+    if op == "===":
+      size = currentArraySize
+      leftPointer = leftDir
+      resultPointer = resDir 
+      index = 0  
+
+      while index < size:
+          resultPointerValue = getVarValue(resultPointer)
+
+          setVarValue(leftPointer, resultPointerValue)
+          index = index + 1
+          leftPointer = leftPointer + 1
+          resultPointer = resultPointer + 1
+
+    if op == "SIZE":
+      currentArraySize = resDir

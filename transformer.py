@@ -8,6 +8,7 @@ memVirtual = MemoriaVirtual()
 stackOp = Stack(False)
 stackJumps = Stack(False)
 stackVar = Stack(False)
+stackArrs = Stack(False)
 stackDim = Stack(False)
 stackType = Stack(False)
 semTable = Semantic()
@@ -68,13 +69,48 @@ def genQuadOpExp(cond):
         if top in cond:
             right_operand = stackVar.pop()
             right_type = stackType.pop()
-            left_operand = stackVar.pop()
-            left_type = stackType.pop()
+            if top not in ["$", "?", "¡"]:
+                left_operand = stackVar.pop()
+                left_type = stackType.pop()
+            else:
+                left_operand = right_operand
+                left_type = right_type
             operator = stackOp.pop()
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
                 # result = ops[operator](left_typed, right_typed)
-                posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
+                posMemVirtual = 0
+                if stackArrs.size() > 0:
+                    leftArr = stackArrs.pop()
+                    sze = 1
+                    if stackArrs.size() > 0 and top not in ["$", "?", "¡"]:
+                        rightArr = stackArrs.pop()
+                        if len(leftArr['arrList']) != len(rightArr['arrList']):
+                            print("Different dimensions!")
+                            return
+                        index = 0
+                        while (index < len(leftArr['arrList'])):
+                            if leftArr['arrList'][index][0] != rightArr['arrList'][index][0]:
+                                print("different sizes")
+                                return
+                            sze = sze * leftArr['arrList'][index][0]
+                            index = index + 1
+                            operator = operator + operator[0]
+                    else:
+                        if len(leftArr['arrList']) != 2:
+                            print("Only matrix operation")
+                            return
+                        index = 0
+                        while (index < len(leftArr['arrList'])):
+                            sze = sze * leftArr['arrList'][index][0]                        
+                            index = index + 1
+                    quad = Quadruple("SIZE", None, None, sze)
+                    quadruples.append(quad.getQuad())
+                    stackArrs.push({ 'dir': posMemVirtual, 'arrList': leftArr['arrList'] })
+                    posMemVirtual = memVirtual.getAddress('pointer', result_type)
+                    memVirtual.setNextAddress("pointer", result_type, sze)
+                else:
+                    posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
                 quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
                 stackVar.push(posMemVirtual)
@@ -89,8 +125,7 @@ def genQuadEndExp(cond):
             right_operand = stackVar.pop()
             right_type = stackType.pop()
             operator = stackOp.pop()
-            
-            if stackVar.size() > 0:
+            if stackVar.size() > 0 and top not in ["$", "?", "¡"]:
                 left_operand = stackVar.pop()
                 left_type = stackType.pop()
                 result_type = semTable.result(left_type, right_type, operator)
@@ -98,11 +133,36 @@ def genQuadEndExp(cond):
                 left_operand = None
                 result_type = True
             if result_type != False:
+                if stackArrs.size() > 0:
+                    leftArr = stackArrs.pop()
+                    sze = 1
+                    if stackArrs.size() > 0:
+                        sze = 1
+                        rightArr = stackArrs.pop()
+                        if len(leftArr['arrList']) != len(rightArr['arrList']):
+                            print("Different dimensions!")
+                            return
+                        index = 0
+                        while (index < len(leftArr['arrList'])):
+                            if leftArr['arrList'][index][0] != rightArr['arrList'][index][0]:
+                                print("different sizes")
+                                return
+                            sze = sze * leftArr['arrList'][index][0]
+                            index = index + 1
+                            operator = operator + operator[0]  
+                    else:
+                        index = 0
+                        while (index < len(leftArr['arrList'])):
+                            sze = sze * leftArr['arrList'][index][0]
+                            index = index + 1
+                    quad = Quadruple("SIZE", None, None, sze)
+                    quadruples.append(quad.getQuad())
                 quad = Quadruple(operator, left_operand, None, right_operand)
                 quadruples.append(quad.getQuad())
             else:
                 print("error")
         else:
+            print(top)
             print("ERROR QUAD END EXP 1 ")
     else:
         print("ERROR QUAD END EXP 2 ")
@@ -246,17 +306,40 @@ class TransformerLark(Transformer):
     # ARRAYS
     def id(self, args):
         exists = self.findbyMem(args[0].value)
-        if exists > -1:
-            stackVar.push(exists)
-            stackType.push(self.findbyType(args[0]))
-        else:    
-            self.saveVar(args[0].value)
         self.currVar = args[0].value
-        if len(self.getArray(self.currVar)) > 0:
+        arr = self.getArray(self.currVar)
+        sze = len(arr)
+        if sze > 0:
+            stackArrs.push({ 'dir': exists, 'arrList': arr })
+        stackVar.push(exists)
+        stackType.push(self.findbyType(args[0]))
+        if sze > 0:
             self.currArr = self.currVar
         return Tree('id',args) 
+    
+    def id_new(self, args):
+        sze = len(self.getArray(self.currVar)) 
+        self.saveVar(args[0].value)
+        self.currVar = args[0].value
+        if sze > 0:
+            self.currArr = self.currVar
+        return Tree('id_new', args)
+
+    def arrms(self, args):
+        if stackArrs.size() > 0:
+            stackArrs.pop()
+        return Tree('arrms', args)
 
     def lbrake(self, args):
+        if self.R > 1:
+            self.dim = self.dim + 1
+        else:
+            self.R = 1
+            self.dim = 1
+        self.getArray(self.currVar).append([0,0])
+        return Tree('lbrake', args) 
+    
+    def arrbrake(self, args):
         if stackVar.size() > 0 and stackOp.peek() != "[":
             var = stackVar.pop()
             if len(self.getArray(self.currArr)) > 0:
@@ -264,14 +347,7 @@ class TransformerLark(Transformer):
                 stackDim.push({ 'var': var, 'dim' : 1 })
                 self.currNodes = self.getArray(self.currArr).copy()
                 stackOp.push("[")
-            return Tree('lbrake', args)
-        if self.R > 1:
-            self.dim = self.dim + 1
-        if stackOp.peek() != "[":
-            self.dim = 1
-            self.R = 1
-            self.getArray(self.currVar).append([0,0])
-        return Tree('lbrake', args) 
+        return Tree('arrbrake', args)
     
     def size(self, args):
         self.R = int(args[0].value) * self.R
@@ -315,6 +391,8 @@ class TransformerLark(Transformer):
         return Tree('arrmexp', args)
 
     def arr(self, args):
+        if stackArrs.size() > 0:
+            stackArrs.pop()
         if stackVar.size() > 0:
             aux1 = stackVar.pop()
             posMemVirtual2 = memVirtual.getAddress('temp', "int")
@@ -350,11 +428,11 @@ class TransformerLark(Transformer):
     def string(self, args):
         dirCte = self.findbyMemCte(args[0].value)
         if dirCte == -1:
-            dirCte = memVirtual.getAddress('cte', 'string')
+            dirCte = memVirtual.getAddress('cte', 'char')
             slicedString = args[0].value[1:len(args[0].value) - 1]
-            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "string", 'value': slicedString, 'dir': dirCte }
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "char", 'value': slicedString, 'dir': dirCte }
         stackVar.push(dirCte)
-        stackType.push("string")
+        stackType.push("char")
         return Tree('string', args) 
 
     def insertToCte(self, value):
@@ -414,6 +492,10 @@ class TransformerLark(Transformer):
     def op5(self, args):
         stackOp.push(args[0].value)
         return Tree('op5', args)
+    
+    def opmatrix(self, args):
+        stackOp.push(args[0].value)
+        return Tree('opmatrix', args)
 
     def while_key(self, args):
         stackJumps.push(len(quadruples))
@@ -532,7 +614,7 @@ class TransformerLark(Transformer):
         return ('termino', args)
 
     def factor(self, args):
-        genQuadOpExp(["*","/"])
+        genQuadOpExp(["*","/","$","?","¡"])
         return ('factor', args)
 
     def assign_var(self, args):

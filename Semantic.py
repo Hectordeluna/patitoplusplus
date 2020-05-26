@@ -52,6 +52,27 @@ class Semantic:
 				return "bool"
 			else:
 				return False
+		elif op == "$":
+			if left == "float" and right == "float":
+				return "float"
+			elif left == "int" and right == "int":
+				return "float"
+			else:
+				return False
+		elif op == "?":
+			if left == "float" and right == "float":
+				return "float"
+			elif left == "int" and right == "int":
+				return "int"
+			else:
+				return False
+		elif op == "¡":
+			if left == "float" and right == "float":
+				return "float"
+			elif left == "int" and right == "int":
+				return "int"
+			else:
+				return False
 		elif op == "return":
 			return left == right
 		elif op == "print":

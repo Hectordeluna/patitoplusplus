@@ -16,16 +16,18 @@ calc_grammar = r"""
     main_func : main LPAREN RPAREN bloque
     main: MAIN
     var : id arr?
-    arr: arrmexp arrmexp? "$"?
-    decl_var : tipo id arrm? arrm? "$"?
+    arr: arrmexp arrmexp?
+    decl_var : tipo id_new arrm? arrm?
+    id_new: ID
     id: ID
     var_id : decl_var lista_var? SEMI var_id?
-    lista_var : "," ID arrm? arrm? "$"? lista_var?
+    lista_var : "," ID arrm? arrm? lista_var?
     vars : VAR var_id
 
     arrm : lbrake size rbrake
-    arrmexp : lbrake arrexpsize RBRAKE
+    arrmexp : arrbrake arrexpsize RBRAKE
     arrexpsize : exp
+    arrbrake: LBRAKE
     lbrake: LBRAKE
     rbrake: RBRAKE
     size: INTEGER | NUMBER
@@ -108,7 +110,7 @@ calc_grammar = r"""
     times_divide: TIMES_DIVIDE
 
     factor : boolean
-            | var
+            | var opmatrix?
             | call
             | number
             | string
@@ -116,6 +118,13 @@ calc_grammar = r"""
             | PLUS var_cte 
             | MINUS var_cte 
             | LPAREN exp_log_or RPAREN
+    
+    opmatrix: SIGN
+    | QUES
+    | EXCLD
+
+    SIGN: "$"
+    EXCLD: "¡"
 
     string: STRING
     boolean: BOOLEAN
@@ -163,7 +172,7 @@ calc_grammar = r"""
     VAR: "var"
     FLOAT: "float"
     INT: "int"
-    LETRAS: "string"
+    LETRAS: "char"
     BOOL: "bool"
     FUNCTION: "funcion"
     RETURN: "regresa"

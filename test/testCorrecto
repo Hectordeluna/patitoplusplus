@@ -1,33 +1,45 @@
-programa expresiones;
+programa patito;
 var
-  int i, j, p;
-  int Arreglo[10];
-  int Matriz[10][8];
-  int T;
+int i, j, k, x;
+char c ,l , m;
+int A[10][10];
+int B[10][10];
 
-funcion int fact (int j)
-var int i; {
-  i = j + (p - j * 2 + j);
-  si (j == 0.3) entonces {
-    regresa(j);
-  } sino {
-    regresa (j * fact(j - 1));
+funcion void inicia(int z)
+var
+int h, i;
+{
+  i = 5;
+  mientras (i > 0) haz{
+    escribe(k);
+    escribe(i);
+    i = i-1;
   }
 }
 
-funcion void inicia (int y)
-var int x;
-int t; {
-  x = -1;
-  mientras (x < 11) haz {
-    Arreglo[x] = y * x;
+funcion int fibo(int x)
+{
+  si (x == 1 || x == 0) entonces{
+    regresa(x);
+  }
+  sino{
+    regresa(fibo(x-1) + fibo(x-2));
   }
 }
 
-principal() {
-  Arreglo[0] = 1;
-  escribe(Arreglo + Arreglo);
-  desde (Arreglo[0] = 0) hasta (Arreglo[0] < 10) hacer {
-    escribe(Arreglo[0]);
+
+principal()
+{
+  i = 0;
+  mientras (i < 10) haz {
+    j = 0;
+    mientras (j < 10) haz {
+      A[i][j] = 1;
+      B[i][j] = 4;
+      j = j + 1;
+    }
+    i = i + 1;
   }
+  B = A + B * B;
+  i = 0;
 }

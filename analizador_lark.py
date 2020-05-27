@@ -129,8 +129,8 @@ calc_grammar = r"""
     string: STRING
     boolean: BOOLEAN
     call: call_name gen_era call_args? call_end
-    call_end: RPAREN
-    gen_era: LPAREN
+    call_end: rparen
+    gen_era: lparen
     call_name: ID
     call_args: call_var call_args_comma?
     call_var: exp
@@ -240,7 +240,7 @@ def test():
     fp = codecs.open('./test/' + 'testCorrecto','r','utf-8')
     cadena2 = fp.read()
     fp.close()
-    print(duck(cadena2).pretty())
+    duck(cadena2).pretty
 
 
 if __name__ == '__main__':

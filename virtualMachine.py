@@ -1,13 +1,17 @@
 from MemoriaVirtual import *
 from Stack import *
+import numpy as np
 
 globalMem = Memory(0)
-localMem = Memory(4000)
 tmpMem = Memory(8000)
 cteMem = Memory(12000)
 pointMem = Memory(16000)
 funcNames = Stack(False)
 quadPos = Stack(False)
+memStack = Stack(False)
+tmpStack = Stack(False)
+tmpMem = Memory(8000)
+tmpStack.push(tmpMem)
 
 ops = {
     "+": (lambda a,b: a+b), 
@@ -38,8 +42,10 @@ def getVarValue(dirVar):
   elif dirVar >= 12000:
     currVar = cteMem.getVar(dirVar)
   elif dirVar >= 8000:
+    tmpMem = tmpStack.peek()
     currVar = tmpMem.getVar(dirVar) 
   elif dirVar >= 4000:
+    localMem = memStack.peek()
     currVar = localMem.getVar(dirVar)
   elif dirVar >= 0:
       currVar = globalMem.getVar(dirVar)
@@ -51,8 +57,10 @@ def setVarValue(dirVar, value):
   elif dirVar >= 12000:
     currVar = cteMem.setVar(dirVar, value)
   elif dirVar >= 8000:
+    tmpMem = tmpStack.peek()
     currVar = tmpMem.setVar(dirVar, value)
   elif dirVar >= 4000:
+    localMem = memStack.peek()
     currVar = localMem.setVar(dirVar, value)
   elif dirVar >= 0:
       currVar = globalMem.setVar(dirVar, value)
@@ -68,9 +76,12 @@ def runMachine(quadruples, functions):
 
   i = -1
   currentArraySize = 0
-
+  currentArrayWH = [0,0]
+  newMem = None
+  newTmp = None
   while i < len(quadruples):
     i = i + 1
+
     if i >= len(quadruples):
       break
     [op, leftDir, rightDir, resDir] = quadruples[i]
@@ -114,19 +125,91 @@ def runMachine(quadruples, functions):
       if resDir > 15999:
         size = currentArraySize
         resultPointer = resDir
+        [w, h] = currentArrayWH
 
         index = 0  
+        cw = 0
+        while cw < w:
+          j = 0
+          while j < h:
+            value = getVarValue(resDir + j + cw)
+            print(value, end=' ')
+            j = j + 1
+          cw = cw + 1
+          print("")
+      else:
+        val = getVarValue(resDir)
+        if isinstance(val, int) and val > 15999:
+          val = getVarValue(val)
+        print(val)
 
-        while index < size:
-            resultResPointer = getVarValue(resultPointer)
-            print(resultResPointer)
-            index = index + 1
-            resultPointer = resultPointer + 1
-        return
-      val = getVarValue(resDir)
-      if isinstance(val, int) and val > 15999:
-        val = getVarValue(val)
-      print(val)
+    if op == "$":
+      [w, h] = currentArrayWH
+      Matrix = [[0 for x in range(w)] for y in range(h)] 
+      
+      M = leftDir
+
+      cw = 0
+      while cw < w:
+        j = 0
+        while j < h:
+          value = getVarValue(leftDir + j + cw)
+          Matrix[cw][j] = value
+          j = j + 1
+        cw = cw + 1
+      res = np.linalg.det(Matrix)
+      setVarValue(resDir, res)
+
+    if op == "¡":
+      [w, h] = currentArrayWH
+      Matrix = [[0 for x in range(h)] for y in range(w)] 
+      
+      M = leftDir
+
+      cw = 0
+      while cw < w:
+        j = 0
+        while j < h:
+          value = getVarValue(leftDir + j + cw)
+          Matrix[cw][j] = value
+          j = j + 1
+        cw = cw + 1
+      m = np.array(Matrix)
+      res = m.T
+      cw = 0
+      j = 0
+      while cw < h:
+        j = 0
+        while j < w:
+          setVarValue(resDir + j + cw, res[cw][j])
+          j = j + 1
+        cw = cw + 1
+
+    if op == "?":
+      [w, h] = currentArrayWH
+      Matrix = [[0 for x in range(h)] for y in range(w)] 
+      
+      M = leftDir
+
+      cw = 0
+      while cw < w:
+        j = 0
+        while j < h:
+          value = getVarValue(leftDir + j + cw)
+          Matrix[cw][j] = value
+          j = j + 1
+        cw = cw + 1
+  
+      m = np.array(Matrix)
+      res = np.linalg.inv(m)
+      cw = 0
+      j = 0
+      while cw < w:
+        j = 0
+        while j < h:
+          setVarValue(resDir + j + cw, res[cw][j])
+          j = j + 1
+        cw = cw + 1
 
     if op in ["+++","---","***","///","++"]:
       size = currentArraySize
@@ -161,9 +244,15 @@ def runMachine(quadruples, functions):
 
     if op == "SIZE":
       currentArraySize = resDir
+      currentArrayWH[0] = leftDir
+      currentArrayWH[1] = rightDir
 
     if op == "ERA":
       funcNames.push(leftDir)
+      newMem = Memory(4000)
+      newTmp = Memory(8000)
+      for currVar in functions[leftDir]["vars"]:
+        newMem.setVar(functions[leftDir]["vars"][currVar]["dir"],functions[leftDir]["vars"][currVar]["value"])
 
     if op == "VER":
       target = getVarValue(leftDir)
@@ -173,9 +262,10 @@ def runMachine(quadruples, functions):
       if target < limInf or target > limSup:
         print("Error en rango de indice")
         break
-
     if op == "GOSUB":
       quadPos.push(i)
+      memStack.push(newMem)
+      tmpStack.push(newTmp)
       i = functions[funcNames.peek()]['quad_count'] - 1
       
     if op == "read":
@@ -186,11 +276,15 @@ def runMachine(quadruples, functions):
       param = getVarValue(leftDir)
       nameVar = functions[funcNames.peek()]['params'][resDir-1]['var']
       dirVar = functions[funcNames.peek()]['vars'][nameVar]['dir']
-      setVarValue(dirVar, param)
+      newMem.setVar(dirVar, param)
 
     if op == "ENDFunc":
-      i = quadPos.pop() + 1
+      i = quadPos.pop()
       funcNames.pop()
+      memStack.pop()
+      tmpStack.pop()
 
     if op == "return":
-      functions['__global__']['vars'][funcNames.peek()]['dir'] = resDir
+      dirToRes = functions['___global___']['vars'][funcNames.peek()]['dir']
+      resValue = getVarValue(resDir)
+      setVarValue(dirToRes, resValue)

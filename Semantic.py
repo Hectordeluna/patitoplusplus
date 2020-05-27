@@ -63,7 +63,7 @@ class Semantic:
 			if left == "float" and right == "float":
 				return "float"
 			elif left == "int" and right == "int":
-				return "int"
+				return "float"
 			else:
 				return False
 		elif op == "¡":

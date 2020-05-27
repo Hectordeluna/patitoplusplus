@@ -30,7 +30,6 @@ class Memory:
 			self.arrInt[address] = int(variable)
 		elif address >= 1000 and address < 2000:
 			self.arrFloat[address - 1000] = variable
-
 		elif address >= 2000 and address < 3000:
 			self.arrChar[address - 2000] = variable
 		elif address >= 3000 and address < 4000:
@@ -41,9 +40,16 @@ class Memory:
 	def getVar(self, address):
 		address = address - self.valInicial
 		if address >= 0 and address < 1000:
-			return int(self.arrInt[address])
+			if address in self.arrInt:
+				return int(self.arrInt[address])
+			else:
+				return -1
 		elif address >= 1000 and address < 2000:
-			return self.arrFloat[address - 1000]
+			address = address - 1000
+			if address in self.arrFloat:
+				return float(self.arrFloat[address])
+			else:
+				return -1
 		elif address >= 2000 and address < 3000:
 			return self.arrChar[address - 2000]
 		elif address >= 3000 and address < 4000:
@@ -56,6 +62,9 @@ class Memory:
 
 	def printBool(self):
 		print(self.arrBool)
+
+	def printFloat(self):
+		print(self.arrFloat)
 
 	def clearMemory(self):
 		self.arrInt = {}

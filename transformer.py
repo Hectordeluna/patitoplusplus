@@ -365,7 +365,6 @@ class TransformerLark(Transformer):
                 self.dim = 1
                 stackDim.push({ 'var': var, 'dim' : 1 })
                 self.currNodes = self.getArray(stackArrName.peek()).copy()
-                print(self.currNodes)
                 stackOp.push("[")
         return Tree('arrbrake', args)
     

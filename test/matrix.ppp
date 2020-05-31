@@ -1,0 +1,13 @@
+programa patito;
+var
+int A[5][3];
+int B[2][2];
+int i, j, xtmp, ytmp, n;
+
+principal()
+{
+  B[1][1] = 10;
+  A[2][2] = B[1][1];
+  escribe(A[2][2]);
+  escribe(B[1][1]);
+}

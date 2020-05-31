@@ -9,6 +9,7 @@ stackOp = Stack(False)
 stackJumps = Stack(False)
 stackVar = Stack(False)
 stackArrs = Stack(False)
+stackArrName = Stack(False)
 stackDim = Stack(False)
 stackType = Stack(False)
 semTable = Semantic()
@@ -116,8 +117,12 @@ def genQuadOpExp(cond):
                             leftArr['arrList'][0] = leftArr['arrList'][1]
                             leftArr['arrList'][1] = tmp 
                         stackArrs.push({ 'dir': posMemVirtual, 'arrList': arrsizes })
-                        posMemVirtual = memVirtual.getAddress("pointer", result_type)
-                        memVirtual.setNextAddress("pointer", result_type, sze)
+                        if stackOp.peek() != "[":
+                            posMemVirtual = memVirtual.getAddress("pointer", result_type)
+                            memVirtual.setNextAddress("pointer", result_type, sze)
+                        else:
+                            posMemVirtual = memVirtual.getAddress("temp", result_type)
+                            memVirtual.setNextAddress("temp", result_type, sze)                           
                 else:
                     posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
                 quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
@@ -180,10 +185,6 @@ def genQuadEndExp(cond):
 def genQuadGoto(): 
     if stackJumps.size() > 0:
         end = stackJumps.pop()
-        if stackJumps.size() > 0:
-            ret = stackJumps.pop()
-            quad = Quadruple("Goto", None, None, ret)
-            quadruples.append(quad.getQuad()) 
         quadruples[end][3] = len(quadruples)
     else:
         raise TypeError("Goto Error, No jumps left")
@@ -293,13 +294,6 @@ class TransformerLark(Transformer):
                 stackType.push(self.functions["___global___"]["vars"][self.calledFunction]["type"])
         return Tree('call_end', args)
 
-    def call(self, args):
-
-        return Tree('call', args)
-
-    def semi_call(self, args):
-        print("e")
-
     def return_val(self, args):
         self.currType = args[0].value
         return Tree('return_val', args)
@@ -337,7 +331,7 @@ class TransformerLark(Transformer):
         stackVar.push(exists)
         stackType.push(self.findbyType(args[0]))
         if sze > 0:
-            self.currArr = self.currVar
+            stackArrName.push(self.currVar)
         return Tree('id',args) 
     
     def id_new(self, args):
@@ -345,7 +339,7 @@ class TransformerLark(Transformer):
         self.saveVar(args[0].value)
         self.currVar = args[0].value
         if sze > 0:
-            self.currArr = self.currVar
+            stackArrName.push(self.currVar)
         return Tree('id_new', args)
 
     def arrms(self, args):
@@ -363,12 +357,12 @@ class TransformerLark(Transformer):
         return Tree('lbrake', args) 
     
     def arrbrake(self, args):
-        if stackVar.size() > 0 and stackOp.peek() != "[":
+        if stackVar.size() > 0:
             var = stackVar.pop()
-            if len(self.getArray(self.currArr)) > 0:
+            if len(self.getArray(stackArrName.peek())) > 0:
                 self.dim = 1
                 stackDim.push({ 'var': var, 'dim' : 1 })
-                self.currNodes = self.getArray(self.currArr).copy()
+                self.currNodes = self.getArray(stackArrName.peek()).copy()
                 stackOp.push("[")
         return Tree('arrbrake', args)
     
@@ -403,14 +397,12 @@ class TransformerLark(Transformer):
                     stackVar.push(posMemVirtual)
             return Tree('arrexpsize', args)
 
-    def arrmexp(self, args):
+    def lbrakesecond(self, args):
         self.dim = self.dim + 1
         currDim = stackDim.pop()
         currDim['dim'] = self.dim
         stackDim.push(currDim)
-        if len(self.currNodes) > 0:
-            self.currNodes.pop(0) 
-        return Tree('arrmexp', args)
+        return Tree('lbrakesecond', args)        
 
     def arr(self, args):
         if stackArrs.size() > 0:
@@ -418,7 +410,7 @@ class TransformerLark(Transformer):
         if stackVar.size() > 0:
             aux1 = stackVar.pop()
             posMemVirtual2 = memVirtual.getAddress('temp', "int")
-            posMemVirtual3 = self.findbyMem(self.currArr)
+            posMemVirtual3 = self.findbyMem(stackArrName.pop())
             quad = Quadruple("+", aux1, posMemVirtual3, posMemVirtual2)
             stackVar.push(posMemVirtual2)
             quadruples.append(quad.getQuad())
@@ -546,7 +538,12 @@ class TransformerLark(Transformer):
         return Tree('end_exp_log', args)
 
     def fin_bloque(self, args):
-        genQuadGoto()
+        end = stackJumps.pop()
+        if stackJumps.size() > 0:
+            ret = stackJumps.pop()
+            quad = Quadruple("Goto", None, None, ret)
+            quadruples.append(quad.getQuad()) 
+        quadruples[end][3] = len(quadruples)
         return Tree('fin_bloque', args)
     
     def fin_for_loop(self, args):
@@ -557,7 +554,12 @@ class TransformerLark(Transformer):
         quadruples.append(quad.getQuad())
         quad = Quadruple("=", aux, None, posMemVirtual)
         quadruples.append(quad.getQuad())
-        genQuadGoto()
+        end = stackJumps.pop()
+        if stackJumps.size() > 0:
+            ret = stackJumps.pop()
+            quad = Quadruple("Goto", None, None, ret)
+            quadruples.append(quad.getQuad()) 
+        quadruples[end][3] = len(quadruples)
         return Tree('fin_for_loop', args)
 
     def exp_end_for(self, args):
@@ -695,7 +697,7 @@ class TransformerLark(Transformer):
         return Tree("rparen", args)
 
     def program(self    , args):
-        prettyList(quadruples)
+        #prettyList(quadruples)
         runMachine(quadruples, self.functions)
         #pretty(self.functions)
         return Tree("program",args)

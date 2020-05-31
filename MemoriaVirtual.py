@@ -5,7 +5,7 @@ class MemoriaVirtual:
 			"local": {"int": 3999, "float": 4999, "char": 5999, "bool": 6999}, 
 			"temp": {"int": 7999, "float": 8999, "char": 9999, "bool": 10999}, 
 			"cte": {"int": 11999, "float": 12999, "char": 13999, "bool": 14999},
-			"pointer": {"int": 15999, "float": 16999, "char": 17999, "bool": 18999}}
+			"pointer": {"int": 15999999, "float": 16999999, "char": 17999999, "bool": 18999999}}
 
 	def getAddress(self, indice, scope):
 		if scope != False:

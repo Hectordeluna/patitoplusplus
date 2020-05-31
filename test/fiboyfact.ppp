@@ -1,0 +1,60 @@
+programa patito;
+var
+int i, j, k, x, f, z, y;
+char c ,l , m;
+int A[2][2];
+float B[2][2];
+
+funcion void inicia(int z)
+var
+int h, i;
+{
+  i = 5;
+  mientras (i > 0) haz{
+    escribe(i);
+    i = i-1;
+  }
+}
+
+funcion int fact(int x) 
+var int y;
+{
+  si (x > 1) entonces {
+    y = fact(x - 1);
+    regresa(x * y);
+  } 
+  regresa(1);
+}
+
+funcion int fibo(int x)
+{
+  si (x == 1 | x == 0) entonces {
+    regresa(x);
+  } sino {
+    regresa(fibo(x - 1) + fibo(x - 2));
+  }
+}
+
+principal()
+{
+  x = 10;
+  f = 1;
+  desde (i = 1) hasta (i < x) haz {
+    f = f + f * i;
+  }
+  escribe(f);
+  escribe(fact(10));
+
+  i = 0;
+  k = 0;
+  z = 0;
+  y = 1;
+  mientras (i < x) haz {
+    z = k + y;
+    k = y;
+    y = z;
+    i = i + 1;
+  }
+  escribe(k);
+  escribe(fibo(10));
+}

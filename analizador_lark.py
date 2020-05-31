@@ -16,7 +16,8 @@ calc_grammar = r"""
     main_func : main LPAREN RPAREN bloque
     main: MAIN
     var : id arr?
-    arr: arrmexp arrmexp?
+    arr: arrmexp (lbrakesecond arrexpsize rbrakearr)?
+    lbrakesecond: LBRAKE
     decl_var : tipo id_new arrm? arrm?
     id_new: ID
     id: ID
@@ -25,7 +26,8 @@ calc_grammar = r"""
     vars : VAR var_id
 
     arrm : lbrake size rbrake
-    arrmexp : arrbrake arrexpsize RBRAKE
+    arrmexp : arrbrake arrexpsize rbrakearr
+    rbrakearr: RBRAKE
     arrexpsize : exp
     arrbrake: LBRAKE
     lbrake: LBRAKE
@@ -200,8 +202,8 @@ calc_grammar = r"""
     GREATER: ">"  
     EQUAL: "=="  
     DOT: "."  
-    AND: "&&"
-    OR: "||"
+    AND: "&"
+    OR: "|"
     LPAREN: "("  
     RPAREN: ")"  
     LBRACE: "{"  
@@ -235,13 +237,12 @@ def main():
         print(duck(s))
 
 
-def test():
-
-    fp = codecs.open('./test/' + 'testCorrecto','r','utf-8')
+def test(file):
+    fp = codecs.open(file,'r','utf-8')
     cadena2 = fp.read()
     fp.close()
     duck(cadena2).pretty
 
 
 if __name__ == '__main__':
-    test()
+    test(sys.argv[1])

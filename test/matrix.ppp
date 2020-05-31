@@ -1,7 +1,8 @@
 programa patito;
 var
-int A[5][3];
-int B[2][2];
+int A[3][5];
+int B[3][5];
+int C[2][2];
 int i, j, xtmp, ytmp, n;
 
 principal()
@@ -10,4 +11,27 @@ principal()
   A[2][2] = B[1][1];
   escribe(A[2][2]);
   escribe(B[1][1]);
+
+  i = 0;
+  mientras (i < 3) haz {
+    j = 0;
+    mientras (j < 5) haz {
+      A[i][j] = 3;
+      B[i][j] = 2;
+      j = j + 1;
+    }
+    i = i + 1;
+  }
+  escribe(A * B);
+  escribe(A + B);
+  escribe(A - B);
+  C[0][0] = 4;
+  C[0][1] = 7;
+  C[1][0] = 2;
+  C[1][1] = 6;
+  escribe("Determinante", C$);
+  escribe("Inversa", C?);
+  escribe("Transpuesta", C¡);
+  A = B;
+  escribe(A);
 }

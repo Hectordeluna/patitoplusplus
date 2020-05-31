@@ -109,6 +109,8 @@ def genQuadOpExp(cond):
                     quadruples.append(quad.getQuad())
                     posMemVirtual = None
                     if operator == "$":
+                        if leftArr['arrList'][0][0] != leftArr['arrList'][1][0]:
+                            raise TypeError("Matrix must be square")
                         posMemVirtual = memVirtual.getAddress("temp", result_type)
                     else:
                         arrsizes = leftArr['arrList']
@@ -363,6 +365,7 @@ class TransformerLark(Transformer):
                 self.dim = 1
                 stackDim.push({ 'var': var, 'dim' : 1 })
                 self.currNodes = self.getArray(stackArrName.peek()).copy()
+                print(self.currNodes)
                 stackOp.push("[")
         return Tree('arrbrake', args)
     
@@ -402,6 +405,7 @@ class TransformerLark(Transformer):
         currDim = stackDim.pop()
         currDim['dim'] = self.dim
         stackDim.push(currDim)
+        self.currNodes.pop(0)
         return Tree('lbrakesecond', args)        
 
     def arr(self, args):

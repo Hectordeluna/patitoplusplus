@@ -132,12 +132,14 @@ def runMachine(quadruples, functions):
             cw = cw + 1
           print("")  
         else:       
+          off = 0
           while cw < w:
             j = 0
             while j < h:
-              value = getVarValue(resDir + j + cw)
+              value = getVarValue(resDir + j + cw + off)
               print(value, end=' ')
               j = j + 1
+            off = off + 1
             cw = cw + 1
             print("")
       else:
@@ -153,12 +155,14 @@ def runMachine(quadruples, functions):
       M = leftDir
 
       cw = 0
+      off= 0
       while cw < w:
         j = 0
         while j < h:
-          value = getVarValue(leftDir + j + cw)
+          value = getVarValue(leftDir + j + cw + off)
           Matrix[cw][j] = value
           j = j + 1
+        off=off+1
         cw = cw + 1
       res = np.linalg.det(Matrix)
       setVarValue(resDir, res)
@@ -170,22 +174,26 @@ def runMachine(quadruples, functions):
       M = leftDir
 
       cw = 0
+      off=0
       while cw < w:
         j = 0
         while j < h:
-          value = getVarValue(leftDir + j + cw)
+          value = getVarValue(leftDir + j + cw + off)
           Matrix[cw][j] = value
           j = j + 1
+        off=off+1
         cw = cw + 1
       m = np.array(Matrix)
       res = m.T
       cw = 0
       j = 0
+      off=0
       while cw < h:
         j = 0
         while j < w:
-          setVarValue(resDir + j + cw, res[cw][j])
+          setVarValue(resDir + j + cw + off, res[cw][j])
           j = j + 1
+        off=off+1
         cw = cw + 1
 
     if op == "?":
@@ -195,23 +203,27 @@ def runMachine(quadruples, functions):
       M = leftDir
 
       cw = 0
+      off=0
       while cw < w:
         j = 0
         while j < h:
-          value = getVarValue(leftDir + j + cw)
+          value = getVarValue(leftDir + j + cw + off)
           Matrix[cw][j] = value
           j = j + 1
+        off=off+1
         cw = cw + 1
   
       m = np.array(Matrix)
       res = np.linalg.inv(m)
       cw = 0
       j = 0
+      off = 0
       while cw < w:
         j = 0
         while j < h:
-          setVarValue(resDir + j + cw, res[cw][j])
+          setVarValue(resDir + j + cw + off, res[cw][j])
           j = j + 1
+        off = off + 1
         cw = cw + 1
 
     if op in ["+++","---","***","///","++"]:
@@ -264,6 +276,7 @@ def runMachine(quadruples, functions):
       limInf = getVarValue(rightDir)
       limSup = getVarValue(resDir)
       if target <= limInf or target > limSup:
+        print(target, limInf, limSup, i)
         print("Error en rango de indice")
         break
 

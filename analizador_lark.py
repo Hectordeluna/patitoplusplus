@@ -4,6 +4,7 @@ import os
 import sys
 import codecs
 
+# Se define la gramatica y los tokens que se usaran
 calc_grammar = r"""
     start: program
 
@@ -22,7 +23,7 @@ calc_grammar = r"""
     id_new: ID
     id: ID
     var_id : decl_var lista_var? SEMI var_id?
-    lista_var : "," ID arrm? arrm? lista_var?
+    lista_var : "," id_new arrm? arrm? lista_var?
     vars : VAR var_id
 
     arrm : lbrake size rbrake

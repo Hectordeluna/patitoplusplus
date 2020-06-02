@@ -1,3 +1,6 @@
+# Valor de pointer 
+pointerMin = 160000*100000000000000
+# Crear dirs para semantica
 class MemoriaVirtual:
 	def __init__(self): 
 		self.memVirtual = {
@@ -5,7 +8,7 @@ class MemoriaVirtual:
 			"local": {"int": 3999, "float": 4999, "char": 5999, "bool": 6999}, 
 			"temp": {"int": 7999, "float": 8999, "char": 9999, "bool": 10999}, 
 			"cte": {"int": 11999, "float": 12999, "char": 13999, "bool": 14999},
-			"pointer": {"int": 15999999, "float": 16000999, "char": 16001999, "bool": 16002999}}
+			"pointer": {"int": pointerMin - 1, "float": pointerMin - 1 + 1000, "char": pointerMin - 1 + 2000, "bool": pointerMin - 1 + 3000}}
 
 	def getAddress(self, indice, scope):
 		if scope != False:
@@ -17,6 +20,7 @@ class MemoriaVirtual:
 			self.memVirtual[indice][scope] = self.memVirtual[indice][scope] + value - 1
 
 class Memory:
+	# Se hace init con la memoria vacia
 	def __init__(self, inicial):
 		self.arrInt = {}
 		self.arrFloat = {}

@@ -4,32 +4,27 @@ from Stack import *
 from Semantic import *
 from MemoriaVirtual import *
 from virtualMachine import *
+
+# Se definen los stacks para operacion
 memVirtual = MemoriaVirtual()
 stackOp = Stack(False)
 stackJumps = Stack(False)
 stackVar = Stack(False)
+# Stack para operaciones en arreglos/matrices
 stackArrs = Stack(False)
 stackArrName = Stack(False)
 stackDim = Stack(False)
 stackType = Stack(False)
+# Init de tabla semantica
 semTable = Semantic()
 currParams = Stack(False)
+# Stack para el trato de vars en el for loop
+# Para el auto incremento de la variable
+forloopvar = Stack(False)
 quadruples = []
-ops = {
-    "+": (lambda a,b: a+b), 
-    "-": (lambda a,b: a-b), 
-    "*": (lambda a,b: a*b), 
-    "/": (lambda a,b: a/b), 
-    "AND": (lambda a,b: a and b), 
-    "OR": (lambda a,b: a or b), 
-    ">": (lambda a,b: a > b),
-    ">=": (lambda a,b: a >= b),
-    "==": (lambda a,b: a == b),
-    "<": (lambda a,b: a < b),
-    "!=": (lambda a,b: a != b),
-    "<=": (lambda a,b: a <= b)
-}
 t_num = 0
+
+# Para imprimir objetos y listas claramente
 def pretty(d, indent=0):
    for key, value in d.items():
       print('\t' * indent + str(key))
@@ -44,6 +39,7 @@ def prettyList(d, indent=0):
         print(str(count) + " " + '\t' * indent + str(value))
         count = count + 1
 
+# Generacion de quadruples de logica 
 def genQuadOpLog(cond):
     if stackOp.size() > 0:
         top = stackOp.peek()
@@ -55,21 +51,22 @@ def genQuadOpLog(cond):
             operator = stackOp.pop()
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
-                # result = ops[operator](left_operand, right_operand)
-                posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
+                posMemVirtual = memVirtual.getAddress('temp', result_type)
                 quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
                 stackVar.push(posMemVirtual)
                 stackType.push(result_type)
             else:
-                raise TypeError("You can't perform that operation! 😥")
+                raise TypeError("ERROR: You can't perform that operation! 😥")
 
+# Generacion de quadruples de expresion
 def genQuadOpExp(cond):
     if stackOp.size() > 0:
         top = stackOp.peek()
         if top in cond:
             right_operand = stackVar.pop()
             right_type = stackType.pop()
+            # Cuando son estas ops se genera el res asi mismo, el left y right operand son iguales
             if top not in ["$", "?", "¡"]:
                 left_operand = stackVar.pop()
                 left_type = stackType.pop()
@@ -79,41 +76,48 @@ def genQuadOpExp(cond):
             operator = stackOp.pop()
             result_type = semTable.result(left_type, right_type, operator)
             if result_type != False:
-                # result = ops[operator](left_typed, right_typed)
                 posMemVirtual = 0
+                # Se verifica que sea una op de arreglos o matrices
                 if stackArrs.size() > 0:
                     leftArr = stackArrs.pop()
                     sze = 1
+                    # Si es una + - * se toma en cuenta el right
                     if stackArrs.size() > 0 and top not in ["$", "?", "¡"]:
                         rightArr = stackArrs.pop()
+                        # Se verifican que sea de la misma dim
                         if len(leftArr['arrList']) != len(rightArr['arrList']):
-                            raise TypeError("A list with a Matrix? Sorry, no 😥")
+                            raise TypeError("ERROR: A list with a Matrix")
                         index = 0
+                        # Se verifica que tengan el mismo numero de col y rows
+                        # Ademas de guardar el tamano de la matriz y num de cols rows
                         while (index < len(leftArr['arrList'])):
                             if leftArr['arrList'][index][0] != rightArr['arrList'][index][0]:
-                                raise TypeError("Different sizes for operation 😥")
+                                raise TypeError("ERROR: Different sizes for operation 😥")
                             sze = sze * leftArr['arrList'][index][0]
                             index = index + 1
                             operator = operator + operator[0]
                     else:
                         if top in ["$", "?", "¡"] and len(leftArr['arrList']) != 2:
-                            raise TypeError("This operation can be only done in Matrix 😥")
+                            raise TypeError("ERROR: This operation can be only done in Matrix 😥")
                         index = 0
+                        # Guarda el tamano y el row y col
                         while (index < len(leftArr['arrList'])):
                             sze = sze * leftArr['arrList'][index][0]                        
                             index = index + 1
                     dimtwo = None
                     if len(leftArr['arrList']) > 1:
                         dimtwo = leftArr['arrList'][1][0]
+                    # Se genera un quad size que contiene los tamanos de la matriz o lista
                     quad = Quadruple("SIZE", leftArr['arrList'][0][0], dimtwo, sze)
                     quadruples.append(quad.getQuad())
                     posMemVirtual = None
                     if operator == "$":
                         if leftArr['arrList'][0][0] != leftArr['arrList'][1][0]:
-                            raise TypeError("Matrix must be square")
+                            raise TypeError("ERROR: Matrix must be square")
                         posMemVirtual = memVirtual.getAddress("temp", result_type)
                     else:
                         arrsizes = leftArr['arrList']
+                        # En esta op se cambian las rows y cols para siguientes ops
                         if operator == "¡":
                             tmp = leftArr['arrList'][0]
                             leftArr['arrList'][0] = leftArr['arrList'][1]
@@ -126,7 +130,7 @@ def genQuadOpExp(cond):
                             posMemVirtual = memVirtual.getAddress("temp", result_type)
                             memVirtual.setNextAddress("temp", result_type, sze)                           
                 else:
-                    posMemVirtual = memVirtual.getAddress('temp', result_type) # falta cambiar a que sea segun el tipo
+                    posMemVirtual = memVirtual.getAddress('temp', result_type)
                 quad = Quadruple(operator, left_operand, right_operand, posMemVirtual)
                 quadruples.append(quad.getQuad())
                 stackVar.push(posMemVirtual)
@@ -134,6 +138,7 @@ def genQuadOpExp(cond):
             else:
                 print("error termino")
 
+# Se ejecuta al finalizar la expresion, como = print etc
 def genQuadEndExp(cond):
     if stackOp.size() > 0:
         top = stackOp.peek()
@@ -156,11 +161,11 @@ def genQuadEndExp(cond):
                         sze = 1
                         rightArr = stackArrs.pop()
                         if len(leftArr['arrList']) != len(rightArr['arrList']):
-                            raise TypeError("A list with a Matrix? Sorry, no 😥")
+                            raise TypeError("ERROR: A list with a Matrix 😥")
                         index = 0
                         while (index < len(leftArr['arrList'])):
                             if leftArr['arrList'][index][0] != rightArr['arrList'][index][0]:
-                                raise TypeError("Different sizes for operation 😥")
+                                raise TypeError("ERROR: Different sizes for operation 😥")
                             sze = sze * leftArr['arrList'][index][0]
                             index = index + 1
                             operator = operator + operator[0]  
@@ -178,21 +183,23 @@ def genQuadEndExp(cond):
                 quad = Quadruple(operator, left_operand, None, right_operand)
                 quadruples.append(quad.getQuad())
             else:
-                raise TypeError("Cant perform that operation 😥")
+                raise TypeError("ERROR: Cant perform that operation 😥")
         else:
-            raise TypeError("Weird error ", top)
+            raise TypeError("ERROR: Exp ended too soon ", top)
     else:
-        raise TypeError("Error")
+        raise TypeError("ERROR: Stack Op 0")
 
+# Se generan los goto saltos
 def genQuadGoto(): 
     if stackJumps.size() > 0:
         end = stackJumps.pop()
         quadruples[end][3] = len(quadruples)
     else:
-        raise TypeError("Goto Error, No jumps left")
+        raise TypeError("ERROR: Goto Error, No jumps left")
 
 class TransformerLark(Transformer):
 
+    # Se hace init a las vars locales
     def __init__(self):
         self.functions = {}
         self.currType = ""
@@ -203,9 +210,9 @@ class TransformerLark(Transformer):
         self.dim = 1
         self.R = 0
         self.currNodes = []
-        self.forloopvar = 0
         self.calledFunction = ""
 
+    # Hacemos init a la function global y generamos el goto al main
     def program_id(self, args):
         self.currFunction = "___global___"
         self.functions["___global___"] = { 'type': 'VOID', 'vars': {} }
@@ -213,11 +220,13 @@ class TransformerLark(Transformer):
         quad = Quadruple("Goto", None, None, None)
         quadruples.append(quad.getQuad())
         return Tree('program', args)
-    
+
+    # Al llegar a principal reemplazamos el goto del main
     def main(self, args):
         quadruples[0][3] = len(quadruples)
         self.currFunction = "___global___"
 
+    # Se crea los datos de la function que se declaro ademas de hacer verificacion de que no exista
     def func_name(self, args):
         self.currFunction = args[0].value
         currParams.clean()
@@ -230,10 +239,12 @@ class TransformerLark(Transformer):
                 self.saveVar(args[0], "___global___")
         return Tree('func_name', args)
 
+    # Guardamos el tamano de los parametros
     def end_func_decl(self, args):
         self.functions[self.currFunction]['params_size'] = self.currFuncCounter
         return Tree('end_func_decl', args)
 
+    # Agregamos los parametros a la function con el tipo
     def args_func(self, args):
         if currParams.size() > 0:
             top = currParams.pop()
@@ -242,20 +253,21 @@ class TransformerLark(Transformer):
             self.functions[self.currFunction]['params'][self.currFuncCounter] = { 'var': var, 'type': typ }
             self.currFuncCounter = self.currFuncCounter + 1
 
+    # Se genera el endfunc
     def func_bloque(self, args):
         quad = Quadruple("ENDFunc", None, None, None)
-        quadruples.append(quad.getQuad())
-        # Falta el numbero de Ts usadas
-        
+        quadruples.append(quad.getQuad())        
 
+    # Se guarda el tamaño de las vars y el inicio de la func
     def func(self, args):
         self.functions[self.currFunction]['local_size'] = abs(len(self.functions[self.currFunction]['vars']) - self.functions[self.currFunction]['params_size'])
         self.functions[self.currFunction]['quad_count'] = len(quadruples)
         return Tree('end_func_decl', args)     
 
+    # Se verifica que exista y que esa funcion exista
     def call_name(self, args):
         if args[0].value not in self.functions:
-            raise TypeError(args[0].value + " cant be found!")
+            raise TypeError("ERROR: " + args[0].value + " cant be found!")
         self.calledFunction = args[0].value
         return Tree('call_name', args)  
 
@@ -265,6 +277,7 @@ class TransformerLark(Transformer):
         self.currFuncCounter = 0
         return Tree('gen_era', args)
 
+    # Se crean los quads de parametros
     def call_var(self, args):
         if stackVar.size() > 0:
             argument = stackVar.pop()
@@ -275,12 +288,13 @@ class TransformerLark(Transformer):
                 self.currFuncCounter = self.currFuncCounter + 1
                 quadruples.append(quad.getQuad())
             else:
-                raise TypeError("Parameters type mismatch 😥")
+                raise TypeError("ERROR: Parameters type mismatch 😥")
         return Tree('call_var', args)
     
+    # Se hace el gosub, ademas de guardar el resultado de la llamada en el stack de vars para ops, y guardar el valor en un tmp
     def call_end(self, args):
         if self.currFuncCounter < len(self.functions[self.calledFunction]['params']):
-            raise TypeError(self.currFuncCounter + " parameters given, expecting " + len(self.functions[self.calledFunction]['params']))
+            raise TypeError("ERROR:" + self.currFuncCounter + " parameters given, expecting " + len(self.functions[self.calledFunction]['params']))
         else:
             quad = Quadruple("GOSUB", None, None, self.calledFunction) 
             quadruples.append(quad.getQuad())
@@ -304,6 +318,7 @@ class TransformerLark(Transformer):
         self.currType = defType[0]
         return Tree('tipo', defType)
 
+    # Se guarda la variable con los atts como tamano, tipo etc
     def saveVar(self, var, scope = ""):
         if scope == "":
             scope = self.currFunction
@@ -314,15 +329,13 @@ class TransformerLark(Transformer):
                 scopeMem = "global"
             else:
                 scopeMem = "local"
-            posMemVirtual = memVirtual.getAddress(scopeMem, self.currType) # falta cambiar a que sea segun el tipo
+            posMemVirtual = memVirtual.getAddress(scopeMem, self.currType)
             self.functions[scope]['vars'][var] = { 'type': self.currType, 'value': 0, 'dir': posMemVirtual, 'dim': 0, 'arrList': [] }
             currParams.push({ "var": var, "type": self.currType })   
-    
-    def lista_var(self, args):
-        self.saveVar(args[0].value)
-        return Tree('lista_var', args)
 
-    # ARRAYS
+    # Al momento de encontrar un id se empuja al stack de vars
+    # ademas de que si es arreglo se empuja
+    # a la lista de arreglos
     def id(self, args):
         exists = self.findbyMem(args[0].value)
         self.currVar = args[0].value
@@ -336,10 +349,11 @@ class TransformerLark(Transformer):
             stackArrName.push(self.currVar)
         return Tree('id',args) 
     
+    # Se guarda la variable nueva
     def id_new(self, args):
-        sze = len(self.getArray(self.currVar)) 
         self.saveVar(args[0].value)
         self.currVar = args[0].value
+        sze = len(self.getArray(self.currVar))
         if sze > 0:
             stackArrName.push(self.currVar)
         return Tree('id_new', args)
@@ -358,6 +372,7 @@ class TransformerLark(Transformer):
         self.getArray(self.currVar).append([0,0])
         return Tree('lbrake', args) 
     
+    # se guardan las dims en stack para accesar despues, y agarran los nodos actuales
     def arrbrake(self, args):
         if stackVar.size() > 0:
             var = stackVar.pop()
@@ -368,12 +383,14 @@ class TransformerLark(Transformer):
                 stackOp.push("[")
         return Tree('arrbrake', args)
     
+    # Se guarda el tamano del arreglo
     def size(self, args):
         self.R = int(args[0].value) * self.R
         sze = len(self.getArray(self.currVar))
         self.getArray(self.currVar)[sze - 1][0] = int(args[0].value)
         return Tree('size', args)
     
+    # Se hace el quad de ver, ademas de los de acceso
     def arrexpsize(self, args):
         if stackOp.size() > 0:
             top = stackOp.peek()
@@ -399,6 +416,7 @@ class TransformerLark(Transformer):
                     stackVar.push(posMemVirtual)
             return Tree('arrexpsize', args)
 
+    # Cuando se encuentra otra dim se trata como tal
     def lbrakesecond(self, args):
         self.dim = self.dim + 1
         currDim = stackDim.pop()
@@ -407,6 +425,7 @@ class TransformerLark(Transformer):
         self.currNodes.pop(0)
         return Tree('lbrakesecond', args)        
 
+    # Al finalizar el arreglo se guarda el resultado del acesso mas pointer
     def arr(self, args):
         if stackArrs.size() > 0:
             stackArrs.pop()
@@ -419,7 +438,8 @@ class TransformerLark(Transformer):
             quadruples.append(quad.getQuad())
             stackOp.pop()
             self.dim = 1
-            
+    
+    # cuando se decalra una variable, si es arreglo se crean el tamano de memroia
     def decl_var(self, args):
         dimTmp = 0
         offset = 0
@@ -442,6 +462,7 @@ class TransformerLark(Transformer):
         self.dim = 1
         self.R = 0
 
+    # Las siguientes funciones son para guardar los valores en ctes
     def string(self, args):
         dirCte = self.findbyMemCte(args[0].value)
         if dirCte == -1:
@@ -486,6 +507,7 @@ class TransformerLark(Transformer):
         stackType.push('bool')     
         return Tree('bool', args) 
 
+    # Las siguientes funciones agregan las ops al stack
     def times_divide(self, args):
         stackOp.push(args[0].value)
         return Tree('times', args)  
@@ -514,6 +536,7 @@ class TransformerLark(Transformer):
         stackOp.push(args[0].value)
         return Tree('opmatrix', args)
 
+    # Se guarda donde se empezo el loop
     def while_key(self, args):
         stackJumps.push(len(quadruples))
         return Tree('while_key', args)
@@ -528,6 +551,7 @@ class TransformerLark(Transformer):
         stackType.push(funcType)
         return Tree('return_str', args)
 
+    # Fin de exp logica para generar el gotof, y se guarda donde se genero
     def end_exp_log(self, args):
         if stackType.size() > 0:
             exp_type = stackType.pop()
@@ -537,9 +561,11 @@ class TransformerLark(Transformer):
                 quadruples.append(quad.getQuad())
                 stackJumps.push(len(quadruples) - 1)
             else:
-                raise TypeError("Logical operation error")
+                raise TypeError("ERROR: Logical operation error")
         return Tree('end_exp_log', args)
 
+    # Se genera el goto con el retorno, si se puede
+    # y reemplaza el gotof
     def fin_bloque(self, args):
         end = stackJumps.pop()
         if stackJumps.size() > 0:
@@ -549,8 +575,10 @@ class TransformerLark(Transformer):
         quadruples[end][3] = len(quadruples)
         return Tree('fin_bloque', args)
     
+    # Se genera los quads para el auto increment de las variables
+    # Se genera el goto para el loop y reemplaza el gotof
     def fin_for_loop(self, args):
-        aux = self.forloopvar
+        aux = forloopvar.pop()
         posMemVirtual = memVirtual.getAddress('temp', "int")
         numone = self.insertToCte(1)
         quad = Quadruple("+", aux, numone, posMemVirtual)
@@ -565,16 +593,19 @@ class TransformerLark(Transformer):
         quadruples[end][3] = len(quadruples)
         return Tree('fin_for_loop', args)
 
+    # Se guarda la variable que se modificara
     def exp_end_for(self, args):
         quadsze = len(quadruples)
         currVar = quadruples[quadsze - 1][1]
-        self.forloopvar = currVar
+        forloopvar.push(currVar)
         return Tree('exp_end_for', args)
 
+    # Se hace un goto generico
     def if_bloque(self, args):
         genQuadGoto()
         return Tree('if_bloque', args)       
 
+    # Se genera el gotof y se guarda
     def if_key(self, args):
         if stackType.size() > 0:
             exp_type = stackType.pop()
@@ -584,9 +615,10 @@ class TransformerLark(Transformer):
                 quadruples.append(quad.getQuad())
                 stackJumps.push(len(quadruples) - 1)
             else:
-                raise TypeError("You cant do that in an IF, no boolean was returned")
+                raise TypeError("ERROR: You cant do that in an IF, no boolean was returned")
         return Tree('if_key', args)
 
+    # Se hace el goto para el if y se reemplaza el pasado del if
     def else_key(self, args):
         if stackJumps.size() > 0:
             end = stackJumps.pop()
@@ -596,6 +628,7 @@ class TransformerLark(Transformer):
             quadruples[end][3] = len(quadruples)
         return Tree('else_key', args)
 
+    # Las ops para print y read
     def print_exp(self, args):
         stackOp.push("print")
         stackType.push("print")
@@ -616,6 +649,7 @@ class TransformerLark(Transformer):
         stackType.push("print")
         return Tree('comma', args)       
 
+    # Para hacer los end exp para print read
     def print_exp_fin(self, args):
         genQuadEndExp(["print"])    
         return Tree('print_exp_fin', args)
@@ -624,6 +658,7 @@ class TransformerLark(Transformer):
         genQuadEndExp(['read'])
         return Tree('id_read', args)
 
+    # Genera quad logicos
     def exp_comp(self, args):
         genQuadOpLog([">","<","!=","==","<=",">="])
         return Tree('exp_comp', args)
@@ -636,6 +671,7 @@ class TransformerLark(Transformer):
         genQuadOpLog(["AND"])
         return ('exp_log_or', args)      
 
+    # Se generan quads de exp
     def termino(self, args):
         genQuadOpExp(['+','-'])
         return ('termino', args)
@@ -646,11 +682,11 @@ class TransformerLark(Transformer):
 
     def assign_var(self, args):
         genQuadEndExp(['='])
-        # TEMPORAL
 
     def return_exp(self, args):
         genQuadEndExp(['return'])   
 
+    # Funciones helpers
     def findbyType(self, var):
         if var in self.functions[self.currFunction]['vars']:
             return self.functions[self.currFunction]['vars'][var]['type'].value
@@ -691,6 +727,7 @@ class TransformerLark(Transformer):
             self.functions["___global___"]['vars'][var]['value'] = value
         return False
 
+    # Se guardan las ops de lparen y se popean al final del arreglo
     def lparen(self, args):
         stackOp.push(args[0].value)
         return Tree("lparen", args)
@@ -699,8 +736,9 @@ class TransformerLark(Transformer):
         stackOp.pop()
         return Tree("rparen", args)
 
-    def program(self    , args):
+    # Se ejecuta al final del programa
+    def program(self, args):
         #prettyList(quadruples)
-        runMachine(quadruples, self.functions)
         #pretty(self.functions)
+        runMachine(quadruples, self.functions)
         return Tree("program",args)

@@ -12,8 +12,8 @@ class Semantic:
 				return "int"
 			elif left == "float" and right == "float":
 				return "float"
-			elif left == "string" and right == "string":
-				return "string"
+			elif left == "char" and right == "char":
+				return "char"
 			else:
 				return False
 		elif op == "*":
@@ -25,6 +25,10 @@ class Semantic:
 				return "int"
 			elif left == "float" and right == "float":
 				return "float"
+			elif left == "char" and right == "int":
+				return "char"
+			elif left == "int" and right == "char":
+				return "char"
 			else:
 				return False
 		elif op == "/":

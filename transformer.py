@@ -239,11 +239,6 @@ class TransformerLark(Transformer):
                 self.saveVar(args[0], "___global___")
         return Tree('func_name', args)
 
-    # Guardamos el tamano de los parametros
-    def end_func_decl(self, args):
-        self.functions[self.currFunction]['params_size'] = self.currFuncCounter
-        return Tree('end_func_decl', args)
-
     # Agregamos los parametros a la function con el tipo
     def args_func(self, args):
         if currParams.size() > 0:
@@ -253,16 +248,27 @@ class TransformerLark(Transformer):
             self.functions[self.currFunction]['params'][self.currFuncCounter] = { 'var': var, 'type': typ }
             self.currFuncCounter = self.currFuncCounter + 1
 
-    # Se genera el endfunc
-    def func_bloque(self, args):
-        quad = Quadruple("ENDFunc", None, None, None)
-        quadruples.append(quad.getQuad())        
+    # Guardamos el tamano de los parametros
+    def end_func_decl(self, args):
+        self.functions[self.currFunction]['params_size'] = self.currFuncCounter
+        return Tree('end_func_decl', args)        
 
     # Se guarda el tamaño de las vars y el inicio de la func
     def func(self, args):
         self.functions[self.currFunction]['local_size'] = abs(len(self.functions[self.currFunction]['vars']) - self.functions[self.currFunction]['params_size'])
         self.functions[self.currFunction]['quad_count'] = len(quadruples)
-        return Tree('end_func_decl', args)     
+        return Tree('end_func_decl', args)    
+
+    # Se genera el endfunc
+    def func_bloque(self, args):
+        quad = Quadruple("ENDFunc", None, None, None)
+        quadruples.append(quad.getQuad()) 
+
+    def gen_era(self, args):
+        quad = Quadruple("ERA", self.calledFunction, None, None)
+        quadruples.append(quad.getQuad())
+        self.currFuncCounter = 0
+        return Tree('gen_era', args)
 
     # Se verifica que exista y que esa funcion exista
     def call_name(self, args):
@@ -270,12 +276,6 @@ class TransformerLark(Transformer):
             raise TypeError("ERROR: " + args[0].value + " cant be found!")
         self.calledFunction = args[0].value
         return Tree('call_name', args)  
-
-    def gen_era(self, args):
-        quad = Quadruple("ERA", self.calledFunction, None, None)
-        quadruples.append(quad.getQuad())
-        self.currFuncCounter = 0
-        return Tree('gen_era', args)
 
     # Se crean los quads de parametros
     def call_var(self, args):
@@ -314,10 +314,6 @@ class TransformerLark(Transformer):
         self.currType = args[0].value
         return Tree('return_val', args)
 
-    def tipo(self, defType):
-        self.currType = defType[0]
-        return Tree('tipo', defType)
-
     # Se guarda la variable con los atts como tamano, tipo etc
     def saveVar(self, var, scope = ""):
         if scope == "":
@@ -331,7 +327,11 @@ class TransformerLark(Transformer):
                 scopeMem = "local"
             posMemVirtual = memVirtual.getAddress(scopeMem, self.currType)
             self.functions[scope]['vars'][var] = { 'type': self.currType, 'value': 0, 'dir': posMemVirtual, 'dim': 0, 'arrList': [] }
-            currParams.push({ "var": var, "type": self.currType })   
+            currParams.push({ "var": var, "type": self.currType }) 
+
+    def tipo(self, defType):
+        self.currType = defType[0]
+        return Tree('tipo', defType)  
 
     # Al momento de encontrar un id se empuja al stack de vars
     # ademas de que si es arreglo se empuja
@@ -358,11 +358,6 @@ class TransformerLark(Transformer):
             stackArrName.push(self.currVar)
         return Tree('id_new', args)
 
-    def arrms(self, args):
-        if stackArrs.size() > 0:
-            stackArrs.pop()
-        return Tree('arrms', args)
-
     def lbrake(self, args):
         if self.R > 1:
             self.dim = self.dim + 1
@@ -371,6 +366,11 @@ class TransformerLark(Transformer):
             self.dim = 1
         self.getArray(self.currVar).append([0,0])
         return Tree('lbrake', args) 
+
+    def arrms(self, args):
+        if stackArrs.size() > 0:
+            stackArrs.pop()
+        return Tree('arrms', args)
     
     # se guardan las dims en stack para accesar despues, y agarran los nodos actuales
     def arrbrake(self, args):
@@ -480,6 +480,15 @@ class TransformerLark(Transformer):
             self.functions["___cte___"]['vars'][value] = { 'type': "int", 'value': value, 'dir': dirCte }
         return dirCte
 
+    def boolean(self, args):
+        dirCte = self.findbyMemCte(args[0].value)
+        if dirCte == -1:
+            dirCte = memVirtual.getAddress('cte', 'bool')
+            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "bool", 'value': args[0].value, 'dir': dirCte }
+        stackVar.push(dirCte)
+        stackType.push('bool')     
+        return Tree('bool', args) 
+
     def integer(self, args):
         dirCte = self.findbyMemCte(args[0].value)
         if dirCte == -1:
@@ -497,15 +506,6 @@ class TransformerLark(Transformer):
         stackVar.push(dirCte)
         stackType.push('float')
         return Tree('number', args) 
-    
-    def boolean(self, args):
-        dirCte = self.findbyMemCte(args[0].value)
-        if dirCte == -1:
-            dirCte = memVirtual.getAddress('cte', 'bool')
-            self.functions["___cte___"]['vars'][args[0].value] = { 'type': "bool", 'value': args[0].value, 'dir': dirCte }
-        stackVar.push(dirCte)
-        stackType.push('bool')     
-        return Tree('bool', args) 
 
     # Las siguientes funciones agregan las ops al stack
     def times_divide(self, args):
@@ -639,15 +639,15 @@ class TransformerLark(Transformer):
         stackType.push("read")
         return Tree("read_emp", args)
 
-    def comma_read(self, args):
-        stackOp.push("read")
-        stackType.push("read")
-        return Tree("comma_read", args)
-
     def comma(self, args):
         stackOp.push("print")
         stackType.push("print")
-        return Tree('comma', args)       
+        return Tree('comma', args) 
+
+    def comma_read(self, args):
+        stackOp.push("read")
+        stackType.push("read")
+        return Tree("comma_read", args)      
 
     # Para hacer los end exp para print read
     def print_exp_fin(self, args):
@@ -663,13 +663,13 @@ class TransformerLark(Transformer):
         genQuadOpLog([">","<","!=","==","<=",">="])
         return Tree('exp_comp', args)
 
-    def exp_log_or(self, args):
-        genQuadOpLog(["OR"])
-        return ('exp_log_or', args)     
-
     def exp_log_and(self, args):
         genQuadOpLog(["AND"])
-        return ('exp_log_or', args)      
+        return ('exp_log_or', args)
+
+    def exp_log_or(self, args):
+        genQuadOpLog(["OR"])
+        return ('exp_log_or', args)           
 
     # Se generan quads de exp
     def termino(self, args):
@@ -708,13 +708,6 @@ class TransformerLark(Transformer):
             return self.functions["___global___"]['vars'][var]['dir']
         return -1
 
-    def getArray(self, var):
-        if var in self.functions[self.currFunction]['vars']:
-            return self.functions[self.currFunction]['vars'][var]['arrList']
-        elif var in self.functions["___global___"]['vars']:
-            return self.functions["___global___"]['vars'][var]['arrList']
-        return []
-
     def findbyMemCte(self, var):
         if var in self.functions['___cte___']['vars']:
             return self.functions['___cte___']['vars'][var]['dir']
@@ -726,6 +719,13 @@ class TransformerLark(Transformer):
         elif var in self.functions["___global___"]['vars']:
             self.functions["___global___"]['vars'][var]['value'] = value
         return False
+
+    def getArray(self, var):
+        if var in self.functions[self.currFunction]['vars']:
+            return self.functions[self.currFunction]['vars'][var]['arrList']
+        elif var in self.functions["___global___"]['vars']:
+            return self.functions["___global___"]['vars'][var]['arrList']
+        return []
 
     # Se guardan las ops de lparen y se popean al final del arreglo
     def lparen(self, args):

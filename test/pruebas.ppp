@@ -1,0 +1,35 @@
+programa patito;
+var
+int A[10];
+int i, j, n;
+
+funcion void inicia(int j) {
+   i = 0;
+  mientras (i < 10) haz {
+    A[i] = i + 1;
+    i = i + 1;
+  }
+  escribe(A);
+  A[2] = j;
+  A[6] = j; 
+}
+
+funcion int cuenta(int x, int pos) 
+{
+  si (pos >= 10) entonces {
+    regresa(0);
+  }
+  si (A[pos] == x) entonces {
+    regresa(1 + cuenta(x,pos + 1));
+  } sino {
+    regresa(cuenta(x,pos + 1));
+  }
+}
+
+principal()
+{
+  escribe("Que numero deseas contar");
+  lee(j);
+  inicia(j);
+  escribe("Resultado", cuenta(j, 0));
+}

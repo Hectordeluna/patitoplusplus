@@ -255,7 +255,7 @@ def runMachine(quadruples, functions):
         cw = cw + 1
 
     # Operaciones de matrices y arreglos
-    if op in ["+++","---","***","///","++"]:
+    if op in ["+++","---","***","///","++","--","**", "//"]:
       size = currentArraySize
       leftPointer = leftDir
       rightPointer = rightDir

@@ -44,8 +44,6 @@ principal()
   }
   escribe(f);
   escribe(fact(10));
-  l = "h" * 5;
-  escribe(l);
   i = 0;
   k = 0;
   z = 0;

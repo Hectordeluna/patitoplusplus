@@ -9,9 +9,9 @@ funcion void inicia(int j) {
     A[i] = i + 1;
     i = i + 1;
   }
-  escribe(A);
   A[2] = j;
   A[6] = j; 
+  escribe(A);
 }
 
 funcion int cuenta(int x, int pos) 

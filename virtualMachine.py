@@ -1,6 +1,7 @@
 from MemoriaVirtual import *
 from Stack import *
 import numpy as np
+
 # La memoria init para el pointer
 pointerMin = 160000*100000000000000
 
@@ -73,7 +74,6 @@ def setVarValue(dirVar, value):
   return currVar
 
 def runMachine(quadruples, functions):
-
   # Se crean las tablas para function global y las ctes que se definieron
   for currVar in functions["___cte___"]["vars"]:
     cteMem.setVar(functions["___cte___"]["vars"][currVar]["dir"],functions["___cte___"]["vars"][currVar]["value"])
@@ -86,8 +86,8 @@ def runMachine(quadruples, functions):
   currentArraySize = 0
   currentArrayWH = [0,0]
   # Tmps para llamadas
-  newMem = None
   newTmp = None
+  newMem = None
   while i < len(quadruples):
     i = i + 1
 
@@ -169,6 +169,11 @@ def runMachine(quadruples, functions):
         if isinstance(val, int) and val > pointerMin - 1:
           val = getVarValue(val)
         print(val)
+
+    # Se lee el input y se guarda
+    if op == "read":
+      value = input()
+      setVarValue(resDir, value)
 
     # Operacion para matrix
     if op == "$":
@@ -254,6 +259,20 @@ def runMachine(quadruples, functions):
         off = off + 1
         cw = cw + 1
 
+    # Asignacion especial para matriz y lista
+    if op in ["===M","==M"]:
+      size = currentArraySize
+      leftPointer = leftDir
+      resultPointer = resDir 
+      index = 0  
+      # Igual que la op pero se guarda en el res
+      while index < size:
+          resultPointerValue = getVarValue(resultPointer)
+          setVarValue(leftPointer, resultPointerValue)
+          index = index + 1
+          leftPointer = leftPointer + 1
+          resultPointer = resultPointer + 1
+
     # Operaciones de matrices y arreglos
     if op in ["+++","---","***","///","++","--","**", "//"]:
       size = currentArraySize
@@ -272,20 +291,7 @@ def runMachine(quadruples, functions):
           leftPointer = leftPointer + 1
           rightPointer = rightPointer + 1
           resultPointer = resultPointer + 1
-    
-    # Asignacion especial para matriz y lista
-    if op in ["===M","==M"]:
-      size = currentArraySize
-      leftPointer = leftDir
-      resultPointer = resDir 
-      index = 0  
-      # Igual que la op pero se guarda en el res
-      while index < size:
-          resultPointerValue = getVarValue(resultPointer)
-          setVarValue(leftPointer, resultPointerValue)
-          index = index + 1
-          leftPointer = leftPointer + 1
-          resultPointer = resultPointer + 1
+
     # Se guardan las dimensiones
     if op == "SIZE":
       currentArraySize = resDir
@@ -319,11 +325,6 @@ def runMachine(quadruples, functions):
       memStack.push(newMem)
       tmpStack.push(newTmp)
       i = functions[funcNames.peek()]['quad_count'] - 1
-    
-    # Se lee el input y se guarda
-    if op == "read":
-      value = input()
-      setVarValue(resDir, value)
 
     # se hace init de cada param, en la mem nueva, que no esta en el stack todavia
     if op == "PARAMETER":
